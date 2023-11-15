@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,10 +26,10 @@
             <div class="offcanvas-body">
               <ul class="navbar-nav justify-content-end flex-grow-1 pe-3">
                 <li class="nav-item">
-                  <a class="nav-link active" aria-current="page" href="login.html">Login</a>
+                  <a class="nav-link active" aria-current="page" href="login">Login</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="signup.html">Register</a>
+                  <a class="nav-link" href="signup">Register</a>
                 </li>
                 <!-- <li class="nav-item dropdown"> -->
                   <!-- <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -55,13 +57,13 @@
     <div id="carouselExampleRide" class="carousel slide" data-bs-ride="true">
         <div class="carousel-inner">
           <div class="carousel-item active">
-            <img src="images\s1.jpg" class="d-block w-100" alt="...">
+            <img src="{% static'main/images\s1.jpg'%}" class="d-block w-100" alt="...">
           </div>
           <div class="carousel-item">
-            <img src="images\s2.jpg" class="d-block w-100" alt="...">
+            <img src="{% static'main/images\s1.jpg'%}" class="d-block w-100" alt="...">
           </div>
           <div class="carousel-item">
-            <img src="images\s3.jpg" class="d-block w-100" alt="...">
+            <img src="{% static'main/images\s1.jpg'%}" class="d-block w-100" alt="...">
           </div>
         </div>
         <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleRide" data-bs-slide="prev">
