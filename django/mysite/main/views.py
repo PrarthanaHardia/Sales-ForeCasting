@@ -1,14 +1,14 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 # Create your views here.
-def signup(response):
-    return render(response,"main/signup.html",{})
+def signup(request):
+    return render(request,"signup.html")
   
-def index(response):
-    return render(response,"main/index.html",{})
+def index(request):
+    return render(request,"index.html")
 
-def login(response):
-    return render(response,"main/login.html",{})
+def login(request):
+    return render(request,"login.html")
 
-def home(response):
-    return render(response,"main/home.html",{})
+def home(request):
+    return render(request,"home.html")
