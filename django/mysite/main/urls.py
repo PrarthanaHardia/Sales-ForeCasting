@@ -5,5 +5,6 @@ urlpatterns =[
     path("signup/",views.signup,name="signup"),
     path("login/",views.login,name="login"),
     path("home/",views.home,name="home"),
+    path("start/",views.start,name="start"),
     path("",views.index,name="index"),
 ]
