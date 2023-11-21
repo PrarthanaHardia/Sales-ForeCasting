@@ -3,6 +3,7 @@ from pymongo import MongoClient
 import pickle
 from bson.binary import Binary
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class BaseModel:
@@ -13,13 +14,10 @@ class BaseModel:
         self.client = MongoClient('mongodb://localhost:27017/')
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
-        self.data = None
-        self.target = None
 
-
-    def save_data(self, data_id):
+    def save_data(self, user_id):
         pickled_data = Binary(pickle.dumps(self.data))
-        self.collection.insert_one({'data_id': data_id, 'data': pickled_data})
+        result=self.collection.insert_one({'user_id': user_id, 'data': pickled_data})
 
 
     def get_data(self, data_id):
@@ -106,9 +104,7 @@ class TimeSeriesModel(BaseModel):
             plt.show()
         else:
             print('The best model does not support feature importance.')
-
-
-
+            
     def forecast(self, n_periods):
         if self.model is None:
             print("No model found.")
@@ -148,4 +144,4 @@ if __name__=="main":
 
     clustering_model = ClusteringModel(data, 'Sales', 123, 'sales_forecasting', 'models')
     clustering_model.setup()
-    clustering_model.compare_models()
+    clustering_model.compare_models()    
