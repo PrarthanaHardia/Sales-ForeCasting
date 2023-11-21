@@ -297,6 +297,5 @@ class ClusteringResource(Resource):
 
 api.add_resource(TimeSeriesResource, '/timeseries')
 api.add_resource(ClusteringResource, '/clustering')
-
 if __name__ == '__main__':
     app.run(debug=True)
