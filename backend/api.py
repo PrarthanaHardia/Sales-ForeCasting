@@ -2,9 +2,8 @@ from flask import Flask, request, jsonify, url_for
 from flask_restful import Resource, Api
 from pymongo import MongoClient
 import pandas as pd
-from pycaret.timeseries import *
-from pycaret.clustering import *
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment, ClusteringExperiment
+from pycaret.time_series import TSForecastingExperiment
+from pycaret.clustering import ClusteringExperiment
 import pickle
 from bson.binary import Binary
 from werkzeug.utils import secure_filename
@@ -88,7 +87,6 @@ class Login(Resource):
         # Check if user_id and password are valid
         # Save user data to MongoDB
         if validate_credentials(user_id, password):
-            self.save_user_data(user_id, password)
             # Return success response
             return {'message': 'Login successful'}, 200
         else:
@@ -104,10 +102,6 @@ def validate_credentials(user_id, password):
     else:
         return False
 
-    def save_user_data(self, user_id, password):
-        # Save user data to MongoDB
-        user_data = {'user_id': user_id, 'password': password}
-        user_data.insert_one(user_data)
 
 
 class Signup(Resource):
@@ -115,6 +109,7 @@ class Signup(Resource):
         user_data = request.get_json()
         user_id = user_data.get('user_id')
         email = user_data.get('email')
+        password = user_data.get('password')
 
         # Check if email already exists in the database
         if self.check_email_exists(email):
@@ -205,7 +200,7 @@ class BaseModel:
 
 class TimeSeriesModel(BaseModel):
     def setup(self):
-        self.ts_exp = TimeSeriesExperiment()
+        self.ts_exp = TSForecastExperiment()
         self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id)
 
     def compare_models(self):
