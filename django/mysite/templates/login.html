@@ -32,11 +32,13 @@
                     <div class="form-items">
                         <h3>Login to account</h3>
                         <p>Access to the most powerfull tool in the entire design and web industry.</p>
-                        <form>
+                        <form id="login-form">
+                            {% csrf_token %}
                             <input class="form-control" type="text" name="username" placeholder="E-mail Address" required>
                             <input class="form-control" type="password" name="password" placeholder="Password" required>
                             <div class="form-button">
-                                <button id="submit" type="submit" class="ibtn">Login</button> <a href="forget17.html">Forget password?</a>
+                                <button id="submit" type="submit" class="ibtn">Login</button> 
+                                <a href="forget17.html">Forget password?</a>
                             </div>
                         </form>
                         <div class="other-links">
@@ -51,6 +53,39 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function submitForm() {
+            var user_id = document.getElementById('user_id').value;
+            var password = document.getElementById('password').value;
+    
+            var data = {
+                'user_id': user_id,
+                'password': password
+            };
+    
+            // Convert JavaScript object to JSON before sending
+            var jsonData = JSON.stringify(data);
+    
+            // Make an AJAX request to the Django view
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '{% url 'login' %}', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+                } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+                }
+            };
+            xhr.send(jsonData);
+        }
+    </script>
+    
+
+
 <script src="/staticjs/jquery.min.js"></script>
 <script src="/static/js/popper.min.js"></script>
 <script src="/static/js/bootstrap.min.js"></script>
