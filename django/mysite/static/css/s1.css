@@ -1,0 +1,12 @@
+/* styles.css */
+body {
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+}
+
+.top-bar {
+    background-color: black;
+    color: white;
+    padding: 50px; /* Adjust padding as needed */
+    text-align: center; /* Center text horizontally */
+}
