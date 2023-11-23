@@ -12,6 +12,10 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import matplotlib.pyplot as plt
 import uuid
+from flask import Flask, jsonify
+from flask_restful import Api, Resource
+from statsmodels.tsa.seasonal import seasonal_decompose
+
 
 app = Flask((__name__))
 CORS(app)
@@ -215,7 +219,6 @@ class TimeSeriesModel(BaseModel):
         self.model = self.ts_exp.compare_models()
         self.save_model('Time_Series', self.model, self.data_id)
 
-
     def plot_feature_importance(self):
         if self.model is None:
             print("No model found.")
@@ -241,7 +244,7 @@ class TimeSeriesModel(BaseModel):
             plt.show()
         else:
             print('The best model does not support feature importance.')
-            
+
     def forecast(self, n_periods):
         if self.model is None:
             print("No model found.")
@@ -256,6 +259,30 @@ class TimeSeriesModel(BaseModel):
         plt.legend()
         plt.show()
 
+    def calculate_summary_stats(self):
+        if self.model is None:
+            print("No model found.")
+            return None
+
+        # Generate forecast
+        forecast_df = self.ts_exp.predict_model(self.model, n_periods=len(self.data))
+        # Calculate summary statistics
+        summary_stats = forecast_df.describe()
+
+        return summary_stats
+
+    def calculate_seasonal_distribution(self):
+        if self.model is None:
+            print("No model found.")
+            return None
+
+        # Generate forecast
+        forecast_df = self.ts_exp.predict_model(self.model, n_periods=len(self.data))
+        # Calculate seasonal distribution
+        seasonal_distribution = forecast_df.groupby(forecast_df.index.month).mean()
+
+        return seasonal_distribution
+
 
 class ClusteringModel(BaseModel):
     def setup(self):
@@ -265,6 +292,44 @@ class ClusteringModel(BaseModel):
     def compare_models(self):
         self.best_model = self.clustering_exp.create_model("kmeans")
         self.save_model('KMeans_Clustering', self.best_model)
+
+
+
+
+class ForecastPlotSummary(Resource):
+    def get(self, data_id):
+        # Retrieve the forecast plot summary for the given data_id
+        
+        # Search for dataset with the given dataset ID
+        dataset = dataset_collection.find_one({'dataset_id': data_id})
+        
+        if dataset is None:
+            return jsonify({'error': 'Dataset not found'}), 404
+        
+        # Retrieve the associated model
+        model = load_model('model_db', 'models', data_id)
+        
+        if model is None:
+            return jsonify({'error': 'Model not found'}), 404
+        
+        # Generate forecast and plot
+        forecast_df = model.forecast(n_periods=10)  # Change the value of n_periods as needed
+
+        # Prepare data for the frontend
+        actual_data = [{'x': str(index), 'y': value} for index, value in zip(dataset.index[-10:], dataset['target'][-10:])]
+        forecast_data = [{'x': str(index), 'y': value} for index, value in zip(forecast_df.index, forecast_df['Label'])]
+
+        return jsonify({"status":True,"actual_data": actual_data, "forecast_data": forecast_data})
+
+class SeasonalDistribution(Resource):
+    def get(self, data_id):
+
+        return jsonify({"message": f"Seasonal distribution for data_id {data_id}."})
+
+# Existing code...
+
+api.add_resource(ForecastPlotSummary, "/forecast-plot-summary/<string:data_id>")
+api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
 
 class TimeSeriesResource(Resource):
     def get(self, user_id, dataset_id):
