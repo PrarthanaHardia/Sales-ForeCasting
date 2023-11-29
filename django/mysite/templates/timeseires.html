@@ -1,0 +1,76 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Your head content -->
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff; /* You can customize the background color */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #content-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="parentDiv">
+        <IMG SRC="/static/upload/ProSpectify.gif" >
+    </div>
+
+    <!-- Content Section (Initially Hidden) -->
+    <div id="content-section">
+        <!-- Initial content goes here -->
+        {% comment %} <img src="/static/images/e.png" width="1000" ><br> {% endcomment %}
+        <h3>OUTPUT</h3>
+        <img src="/static/images/g.jpeg" width="600">
+        <img src="">
+    </div>
+
+    <!-- Additional Content Section (Initially Hidden) -->
+    {% comment %} <div id="additional-content-section" style="display: none;">
+        <!-- Additional content goes here -->
+        <h3>OUTPUT</h3>
+        <img src="/static/images/d.jpeg" width="800">
+    </div> {% endcomment %}
+
+    <!-- Your JavaScript and other scripts -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Simulate a delay (in milliseconds) - adjust as needed
+            var initialDelay = 5000; // 3 seconds
+            var additionalContentDelay = 7000; // 5 seconds
+
+            // Hide the loading screen after the initial delay
+            setTimeout(function () {
+                document.getElementById("loading-screen").style.display = "none";
+                document.getElementById("content-section").style.display = "block";
+
+                // Show additional content after the second delay
+                setTimeout(function () {
+                    document.getElementById("additional-content-section").style.display = "block";
+                }, additionalContentDelay);
+            }, initialDelay);
+        });
+    </script>
+</body>
+</html>
+
+
+
