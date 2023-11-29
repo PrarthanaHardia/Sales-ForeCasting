@@ -1,0 +1,49 @@
+<canvas id="myChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+fetch('http://127.0.0.1:5000/forecast-plot-summary/data_id')
+    .then(response => response.json())
+    .then(data => {
+        var ctx = document.getElementById('myChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Actual',
+                    data: data.actual_data,
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }, {
+                    label: 'Forecast',
+                    data: data.forecast_data,
+                    fill: false,
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            parser: 'YYYY-MM-DD HH:mm:ss',
+                            tooltipFormat: 'll HH:mm'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Value'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
