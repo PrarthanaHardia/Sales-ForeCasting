@@ -15,6 +15,8 @@ import uuid
 from flask import Flask, jsonify
 from flask_restful import Api, Resource
 from statsmodels.tsa.seasonal import seasonal_decompose
+from bson import Binary,ObjectId
+import io
 
 
 app = Flask((__name__))
@@ -36,6 +38,29 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+class check(Resource):
+    def get(self):
+        return {"status":True,"message":"Server is running"}
+
+
+def check_validity(user_id, dataset_id):
+    user_record = user_data.find_one({"user_id": user_id})
+    if user_record:
+        dataset_record = dataset_collection.find_one({"_id": ObjectId(dataset_id)})
+
+        if dataset_record:
+            print(dataset_record["content_type"])
+            if dataset_record["content_type"] == "text/csv":
+                df = pd.read_csv(io.BytesIO(dataset_record["file_data"]))
+            elif dataset_record["content_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                df = pd.read_excel(io.BytesIO(dataset_record["file_data"]))
+            else:
+                return {"status": False, "message": "Invalid file format"}
+            return df
+        else:
+            return {"status": False, "message": "Invalid dataset_id"}
+    return {"status": False, "message": "Invalid user_id"}
+
 class file_upload(Resource):
     def post(self):
         try:
@@ -55,26 +80,14 @@ class file_upload(Resource):
                 time_stamp=datetime.now()
                 result = dataset_collection.insert_one({"file_data": file_data,"time_stamp":time_stamp, "filename": filename, "content_type": content_type, "user_id": user_id})
                 file_id = str(result.inserted_id)
-                file_url = url_for("get_dataset", file_id=file_id, _external=True)
+                # file_url = url_for("get_dataset", file_id=file_id, _external=True)
 
-                data = {
-                    "time_stamp":time_stamp,
-                    "user_id": user_id,
-                    "file_id": file_id,
-                    "content_type": content_type,
-                    "dataset_url": file_url,
-                    "model_url":None,
-                    "model_id":None
-                }
-
-                user_data.delete_one({"user_id": user_id})
-                user_data.insert_one(data)
 
                 return jsonify({
                     "status": True,
                     "message": "File uploaded",
                     "file_id": file_id,
-                    "file_url": file_url  
+                    # "file_url": file_url  
                 })
             else:
                 return jsonify({
@@ -152,9 +165,7 @@ class BaseModel:
         self.data = data
         self.target = target
         self.session_id = session_id
-        self.client = MongoClient('mongodb://localhost:27017/')
-        self.db = self.client[db_name]
-        self.collection = self.db[collection_name]
+
 
     def save_data(self, user_id):
         pickled_data = Binary(pickle.dumps(self.data))
@@ -200,8 +211,10 @@ class BaseModel:
         pass
 
     def save_model(self, model_type, best_model, dataset_id):
+        with open(f'{model_type}_{dataset_id}.pkl', 'wb') as f:
+            pickle.dump(best_model, f)
         pickled_model = Binary(pickle.dumps(best_model))
-        self.collection.insert_one({'model_type': model_type, 'model': pickled_model, 'dataset_id': dataset_id})
+        model_collection.insert_one({'model_type': model_type, 'model': pickled_model, 'dataset_id': dataset_id})
 
     def load_model(self, model_type, dataset_id):
         record = self.collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
@@ -213,11 +226,20 @@ class BaseModel:
 class TimeSeriesModel(BaseModel):
     def setup(self):
         self.ts_exp = TSForecastingExperiment()
-        self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id)
+                # Convert the datetime column to datetime type
+        datetime_column = "Order Date"
+        print(self.data.columns)
+        self.data[datetime_column] = pd.to_datetime(self.data[datetime_column])
 
-    def compare_models(self):
-        self.model = self.ts_exp.compare_models()
-        self.save_model('Time_Series', self.model, self.data_id)
+        # Set the datetime column as the index
+        self.data = self.data.resample('D', on='Order Date').sum().reset_index()
+        self.data.set_index(datetime_column, inplace=True)
+        self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id,numeric_imputation_target='mean', numeric_imputation_exogenous=True)
+
+    def compare_models(self,data_id):
+        # self.model = self.ts_exp.compare_models()
+        self.model=self.ts_exp.create_model('auto_arima')
+        self.save_model('Time_Series', self.model, data_id)
 
     def plot_feature_importance(self):
         if self.model is None:
@@ -296,12 +318,18 @@ class ClusteringModel(BaseModel):
 
 
 
-class ForecastPlotSummary(Resource):
-    def get(self, data_id):
+class FPsummary(Resource):
+    def post(self):
         # Retrieve the forecast plot summary for the given data_id
-        
-        # Search for dataset with the given dataset ID
-        dataset = dataset_collection.find_one({'dataset_id': data_id})
+        print(request.get_json())
+        print("here")
+        data=request.get_json()
+        data_id = data['data_id']
+        n=int(request.args['n_periods'])
+        print(data_id,n)
+
+        # # Search for dataset with the given dataset ID
+        dataset = model_collection.find_one({'_id': ObjectId(data_id)},{"model":1})
         
         if dataset is None:
             return jsonify({'error': 'Dataset not found'}), 404
@@ -311,38 +339,54 @@ class ForecastPlotSummary(Resource):
         
         if model is None:
             return jsonify({'error': 'Model not found'}), 404
-        
+
+        model=pickle.load(open('Time_Series_'+data_id+'.pkl','rb'))
         # Generate forecast and plot
-        forecast_df = model.forecast(n_periods=10)  # Change the value of n_periods as needed
+        forecast_df = model.forecast(n_periods=n)  # Change the value of n_periods as needed
 
         # Prepare data for the frontend
         actual_data = [{'x': str(index), 'y': value} for index, value in zip(dataset.index[-10:], dataset['target'][-10:])]
         forecast_data = [{'x': str(index), 'y': value} for index, value in zip(forecast_df.index, forecast_df['Label'])]
-
         return jsonify({"status":True,"actual_data": actual_data, "forecast_data": forecast_data})
 
 class SeasonalDistribution(Resource):
     def get(self, data_id):
-
-        return jsonify({"message": f"Seasonal distribution for data_id {data_id}."})
-
-# Existing code...
-
-api.add_resource(ForecastPlotSummary, "/forecast-plot-summary/<string:data_id>")
-api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
-
-class TimeSeriesResource(Resource):
-    def get(self, user_id, dataset_id):
-        # Retrieve dataset from the dataset collection using user ID and dataset ID
-        dataset = dataset_collection.find_one({'user_id': user_id, 'dataset_id': dataset_id})
+        # Retrieve the dataset with the given data_id
+        dataset = dataset_collection.find_one({'dataset_id': data_id})
         
         if dataset is None:
             return jsonify({'error': 'Dataset not found'}), 404
-        
+
+        # Decompose the time series
+        result = seasonal_decompose(dataset['target'], model='additive', period=1)
+        print(result.seasonal)
+
+        # Prepare data for the frontend
+        seasonal_data = [{'x': str(index), 'y': float(value)} for index, value in zip(dataset.index, result.seasonal)]
+
+        return jsonify({"status":True, "seasonal_data": seasonal_data})
+
+# Existing code...
+
+api.add_resource(FPSummary, "/fplot")
+api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
+
+class TimeSeriesResource(Resource):
+    def get(self):
+        # Retrieve dataset from the dataset collection using user ID and dataset ID
+        dataset_id = request.args['dataset_id']
+        user_id=request.args['user_id']
+        target=request.args['target']
+        validity=check_validity(user_id,dataset_id)
+        if isinstance(validity,pd.DataFrame):
+            df=validity
+        else:
+            return validity
+
         # Load trained time series models from MongoDB
-        model = TimeSeriesModel(data=dataset.data, target=dataset.target, session_id=123, db_name='model_db', collection_name='models')
+        model = TimeSeriesModel(data=df,target=target , session_id=123, db_name='model_db', collection_name='models')
         model.setup()
-        model.compare_models()
+        model.compare_models(data_id=dataset_id)
         
         return jsonify({'message': 'Time series models trained and saved successfully'}), 200
 
@@ -356,7 +400,7 @@ class ClusteringResource(Resource):
             return jsonify({'error': 'Dataset not found'}), 404
         
         # Load trained clustering models from MongoDB
-        model = ClusteringModel(data=dataset.data, target=dataset.target, session_id=123, db_name='model_db', collection_name='models')
+        model = ClusteringModel(data=dataset.data, session_id=123, db_name='model_db', collection_name='models')
         model.setup()
         model.compare_models()
         
