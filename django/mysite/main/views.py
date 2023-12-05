@@ -18,3 +18,9 @@ def home(request):
 
 def start(request):
     return render(request,"start.html")
+def saleforecasting(request):
+    return render(request,"saleforecasting.html")
+def time(request):
+    return render(request,"timeseries2.html")
+def output2(request):
+    return render(request,"timeseires.html")
