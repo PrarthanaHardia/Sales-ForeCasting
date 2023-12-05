@@ -6,7 +6,7 @@ import pandas as pd
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.clustering import ClusteringExperiment
 # from pycaret.internal.pycaret_experiment import TimeSeriesExperiment, ClusteringExperiment
-import pickle
+import dill
 from bson.binary import Binary
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -80,14 +80,12 @@ class file_upload(Resource):
                 time_stamp=datetime.now()
                 result = dataset_collection.insert_one({"file_data": file_data,"time_stamp":time_stamp, "filename": filename, "content_type": content_type, "user_id": user_id})
                 file_id = str(result.inserted_id)
-                # file_url = url_for("get_dataset", file_id=file_id, _external=True)
 
 
                 return jsonify({
                     "status": True,
                     "message": "File uploaded",
                     "file_id": file_id,
-                    # "file_url": file_url  
                 })
             else:
                 return jsonify({
@@ -168,14 +166,14 @@ class BaseModel:
 
 
     def save_data(self, user_id):
-        pickled_data = Binary(pickle.dumps(self.data))
-        result=self.collection.insert_one({'user_id': user_id, 'data': pickled_data})
+        dilld_data = Binary(dill.dumps(self.data))
+        result=self.collection.insert_one({'user_id': user_id, 'data': dilld_data})
 
 
     def get_data(self, data_id):
         record = self.collection.find_one({'data_id': data_id})
         if record is not None:
-            self.data = pickle.loads(record['data'])
+            self.data = dill.loads(record['data'])
         else:
             print(f"No data found for ID {data_id}.")
 
@@ -201,8 +199,8 @@ class BaseModel:
             return
 
         # Save data to MongoDB
-        pickled_data = Binary(pickle.dumps(self.data))
-        self.collection.insert_one({'data_id': data_id, 'data': pickled_data})
+        dilld_data = Binary(dill.dumps(self.data))
+        self.collection.insert_one({'data_id': data_id, 'data': dilld_data})
 
     def setup(self):
         pass
@@ -210,16 +208,16 @@ class BaseModel:
     def compare_models(self):
         pass
 
-    def save_model(self, model_type, best_model, dataset_id):
+    def save_model(self, model_type, experiment, dataset_id):
         with open(f'{model_type}_{dataset_id}.pkl', 'wb') as f:
-            pickle.dump(best_model, f)
-        pickled_model = Binary(pickle.dumps(best_model))
-        model_collection.insert_one({'model_type': model_type, 'model': pickled_model, 'dataset_id': dataset_id})
+            dill.dump(experiment, f)
+        dilld_experiment = Binary(dill.dumps(experiment))
+        model_collection.insert_one({'model_type': model_type, 'model': dilld_experiment, 'dataset_id': dataset_id,"target":self.target})
 
     def load_model(self, model_type, dataset_id):
         record = self.collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
         if record is not None:
-            return pickle.loads(record['model'])
+            return dill.loads(record['model'])
         else:
             return None
 
@@ -239,7 +237,7 @@ class TimeSeriesModel(BaseModel):
     def compare_models(self,data_id):
         # self.model = self.ts_exp.compare_models()
         self.model=self.ts_exp.create_model('auto_arima')
-        self.save_model('Time_Series', self.model, data_id)
+        self.save_model('Time_Series', self.ts_exp, data_id)
 
     def plot_feature_importance(self):
         if self.model is None:
@@ -287,11 +285,11 @@ class TimeSeriesModel(BaseModel):
             return None
 
         # Generate forecast
-        forecast_df = self.ts_exp.predict_model(self.model, n_periods=len(self.data))
+        forecast_df = self.ts_exp.predict_model(self.model,fh=24)
         # Calculate summary statistics
         summary_stats = forecast_df.describe()
 
-        return summary_stats
+        return summary_stats.to_dict()
 
     def calculate_seasonal_distribution(self):
         if self.model is None:
@@ -321,35 +319,42 @@ class ClusteringModel(BaseModel):
 class FPsummary(Resource):
     def post(self):
         # Retrieve the forecast plot summary for the given data_id
-        print(request.get_json())
-        print("here")
         data=request.get_json()
         data_id = data['data_id']
-        n=int(request.args['n_periods'])
-        print(data_id,n)
+        n=int(data['n_periods'])
+        user_id=data['user_id']
+        target=data['target']
 
-        # # Search for dataset with the given dataset ID
-        dataset = model_collection.find_one({'_id': ObjectId(data_id)},{"model":1})
-        
-        if dataset is None:
-            return jsonify({'error': 'Dataset not found'}), 404
-        
+        validity=check_validity(user_id,data_id)
+        if isinstance(validity,pd.DataFrame):
+            dataset=validity
+        else:
+            return validity
+
+
         # Retrieve the associated model
-        model = load_model('model_db', 'models', data_id)
-        
+        model = model_collection.find_one({'dataset_id': data_id},{'model':1})
+        print(model.keys())
         if model is None:
-            return jsonify({'error': 'Model not found'}), 404
+            return {'error': 'Model not found'}, 404
 
-        model=pickle.load(open('Time_Series_'+data_id+'.pkl','rb'))
-        # Generate forecast and plot
-        forecast_df = model.forecast(n_periods=n)  # Change the value of n_periods as needed
+        exp=dill.loads(model["model"])
 
-        # Prepare data for the frontend
-        actual_data = [{'x': str(index), 'y': value} for index, value in zip(dataset.index[-10:], dataset['target'][-10:])]
-        forecast_data = [{'x': str(index), 'y': value} for index, value in zip(forecast_df.index, forecast_df['Label'])]
-        return jsonify({"status":True,"actual_data": actual_data, "forecast_data": forecast_data})
 
+        actual_data = {str(index): value for index, value in zip(dataset.index[-n:], dataset[target][-n:])} 
+
+        forecast_data = pd.DataFrame(index=range(len(dataset), len(dataset) + n))
+
+        # Use predict_model to make forecasts
+        forecast_values = exp.predict_model(data=forecast_data,fh=n)
+        summary_stats = forecast_values.describe().to_dict()
+        # Prepare forecast data for the frontend
+        forecast_data = {str(index): value for index, value in zip(range(len(dataset), len(dataset) + n), forecast_values['Label'])}
+                         
+        return {"status": True, "summary_stats":summary_stats,"actual_data": actual_data, "forecast_data": forecast_data}
+        
 class SeasonalDistribution(Resource):
+
     def get(self, data_id):
         # Retrieve the dataset with the given data_id
         dataset = dataset_collection.find_one({'dataset_id': data_id})
@@ -368,7 +373,7 @@ class SeasonalDistribution(Resource):
 
 # Existing code...
 
-api.add_resource(FPSummary, "/fplot")
+api.add_resource(FPsummary, "/fplot")
 api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
 
 class TimeSeriesResource(Resource):
@@ -388,7 +393,7 @@ class TimeSeriesResource(Resource):
         model.setup()
         model.compare_models(data_id=dataset_id)
         
-        return jsonify({'message': 'Time series models trained and saved successfully'}), 200
+        return {'message': 'Time series models trained and saved successfully'}, 200
 
 
 class ClusteringResource(Resource):
