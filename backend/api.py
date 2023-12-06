@@ -5,18 +5,22 @@ from pymongo import MongoClient
 import pandas as pd
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.clustering import ClusteringExperiment
-# from pycaret.internal.pycaret_experiment import TimeSeriesExperiment, ClusteringExperiment
 import dill
 from bson.binary import Binary
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import uuid
 from flask import Flask, jsonify
 from flask_restful import Api, Resource
 from statsmodels.tsa.seasonal import seasonal_decompose
 from bson import Binary,ObjectId
 import io
+import base64
+import urllib
+from pycaret.time_series import load_experiment as ts_load_experiment
+
 
 
 app = Flask((__name__))
@@ -170,6 +174,19 @@ class BaseModel:
         result=self.collection.insert_one({'user_id': user_id, 'data': dilld_data})
 
 
+    def save_experiment_to_binary(self, experiment):
+        # Save the experiment to a BytesIO object
+        experiment_binary_io = io.BytesIO()
+        experiment.save_experiment(experiment_binary_io)
+        experiment_binary_io.seek(0)
+        
+        # Convert the BytesIO object to binary data
+        experiment_binary = Binary(experiment_binary_io.read())
+        experiment_binary_io.close()
+
+        return experiment_binary
+
+
     def get_data(self, data_id):
         record = self.collection.find_one({'data_id': data_id})
         if record is not None:
@@ -208,11 +225,17 @@ class BaseModel:
     def compare_models(self):
         pass
 
-    def save_model(self, model_type, experiment, dataset_id):
-        with open(f'{model_type}_{dataset_id}.pkl', 'wb') as f:
-            dill.dump(experiment, f)
-        dilld_experiment = Binary(dill.dumps(experiment))
-        model_collection.insert_one({'model_type': model_type, 'model': dilld_experiment, 'dataset_id': dataset_id,"target":self.target})
+    def save_model(self, model_type, model, experiment, dataset_id):
+        self.model=Binary(dill.dumps(model))
+        model_record = model_collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
+        if model_record is not None:
+            print("here")
+            model_collection.update_one(
+                {'model_type': model_type, 'dataset_id': dataset_id},
+                {'$set': {'model_data': experiment, 'model': self.model}}
+            )
+        else:
+            model_collection.insert_one({'model_type': model_type, 'model_data': experiment, 'model': self.model, 'dataset_id': dataset_id, 'target': self.target})
 
     def load_model(self, model_type, dataset_id):
         record = self.collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
@@ -224,20 +247,31 @@ class BaseModel:
 class TimeSeriesModel(BaseModel):
     def setup(self):
         self.ts_exp = TSForecastingExperiment()
-                # Convert the datetime column to datetime type
-        datetime_column = "Order Date"
-        print(self.data.columns)
-        self.data[datetime_column] = pd.to_datetime(self.data[datetime_column])
+        # Identify columns that might contain dates and convert them to datetime
+        object_columns = self.data.select_dtypes(include=['object']).columns
 
-        # Set the datetime column as the index
-        self.data = self.data.resample('D', on='Order Date').sum().reset_index()
-        self.data.set_index(datetime_column, inplace=True)
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                self.data[column] = pd.to_datetime(self.data[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted timestamp
+            
+        timestamp_columns = self.data.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            self.data.drop(columns=list(timestamp_columns[1:]), inplace=True)
+            self.data = self.data.resample('D', on=timestamp_columns[0]).sum().reset_index()
+            self.data.set_index(primary_timestamp_column, inplace=True)
+
+        self.data.fillna(method="ffill", inplace=True)
         self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id,numeric_imputation_target='mean', numeric_imputation_exogenous=True)
 
     def compare_models(self,data_id):
         # self.model = self.ts_exp.compare_models()
         self.model=self.ts_exp.create_model('auto_arima')
-        self.save_model('Time_Series', self.ts_exp, data_id)
+        exp=self.save_experiment_to_binary(self.ts_exp)
+        self.save_model('Time_Series',self.model, exp, data_id)
 
     def plot_feature_importance(self):
         if self.model is None:
@@ -331,50 +365,137 @@ class FPsummary(Resource):
         else:
             return validity
 
-
         # Retrieve the associated model
-        model = model_collection.find_one({'dataset_id': data_id},{'model':1})
-        print(model.keys())
+        model = model_collection.find_one({'dataset_id': data_id,'model_type':"Time_Series"},{'model_data':1,"model":1})
         if model is None:
             return {'error': 'Model not found'}, 404
 
-        exp=dill.loads(model["model"])
+        # # Load the experiment
+        exp_model= dill.loads(model["model"])
+        data=dataset
+        object_columns = data.select_dtypes(include=['object']).columns
+
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                data[column] = pd.to_datetime(data[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted timestamp
+            
+        timestamp_columns = data.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            data.drop(columns=list(timestamp_columns[1:]), inplace=True)
+            data.set_index(primary_timestamp_column, inplace=True)
+            data = data.resample('D').sum()
+            print(data.head())
+            data.index=pd.to_datetime(data.index)
+            # data.set_index(primary_timestamp_column, inplace=True)
 
 
-        actual_data = {str(index): value for index, value in zip(dataset.index[-n:], dataset[target][-n:])} 
+        # data.fillna(method="ffill", inplace=True)
 
-        forecast_data = pd.DataFrame(index=range(len(dataset), len(dataset) + n))
+        exp = ts_load_experiment(io.BytesIO(model["model_data"]),data=data)
+
+
+        actual_data = {str(index): value for index, value in zip(data.index[-n:], data[target][-n:])} 
+
+        forecast_data = pd.DataFrame(index=range(len(data), len(data) + n))
 
         # Use predict_model to make forecasts
-        forecast_values = exp.predict_model(data=forecast_data,fh=n)
+        print(exp.predict_model(estimator=exp_model, fh=n,X=data.tail(n)))
+        forecast_values = exp.predict_model(estimator=exp_model, fh=n)
+        
         summary_stats = forecast_values.describe().to_dict()
+
         # Prepare forecast data for the frontend
-        forecast_data = {str(index): value for index, value in zip(range(len(dataset), len(dataset) + n), forecast_values['Label'])}
-                         
-        return {"status": True, "summary_stats":summary_stats,"actual_data": actual_data, "forecast_data": forecast_data}
-        
+        forecast_data = {str(index): value for index, value in zip(range(len(data), len(data) + n), forecast_values['Label'])}
+
+        # Create a plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(len(data), len(data) + n), forecast_values['Label'])
+        plt.title('Forecast')
+        plt.xlabel('Time')
+        plt.ylabel('Forecast')
+
+        # Save the plot to a BytesIO object
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Convert the BytesIO object to a base64 string
+        image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+
+        # Create a data URL from the base64 string
+        image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
+
+        return {"status": True, "summary_stats":summary_stats, "actual_data": actual_data, "forecast_data": forecast_data, "forecast_plot": image_data_url}
 class SeasonalDistribution(Resource):
-
-    def get(self, data_id):
+    def get(self):
         # Retrieve the dataset with the given data_id
-        dataset = dataset_collection.find_one({'dataset_id': data_id})
-        
-        if dataset is None:
-            return jsonify({'error': 'Dataset not found'}), 404
+        data = request.get_json()
+        data_id = data['data_id']
+        user_id = data['user_id']
+        dataset = dataset_collection.find_one({'_id': ObjectId(data_id)})
+        validity = check_validity(user_id, data_id)
+        if isinstance(validity, pd.DataFrame):
+            dataset = validity
+        else:
+            return validity
 
-        # Decompose the time series
-        result = seasonal_decompose(dataset['target'], model='additive', period=1)
-        print(result.seasonal)
+        object_columns = dataset.select_dtypes(include=['object']).columns
 
-        # Prepare data for the frontend
-        seasonal_data = [{'x': str(index), 'y': float(value)} for index, value in zip(dataset.index, result.seasonal)]
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                dataset[column] = pd.to_datetime(dataset[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted t
+            
+        timestamp_columns = dataset.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            dataset = dataset.set_index(primary_timestamp_column) 
+            dataset.drop(columns=list(timestamp_columns[1:]), inplace=True)
 
-        return jsonify({"status":True, "seasonal_data": seasonal_data})
+        dataset.fillna(method="ffill", inplace=True)
+        dataset = dataset.resample('M').sum()
+        result = seasonal_decompose(dataset["Sales"], model='additive', period=5, extrapolate_trend='freq')
+        print(result.trend.head())
+        print(result.seasonal.head())
+        print(result.resid.head())
+        # Create a plot
+        plt.figure(figsize=(10, 6))
 
-# Existing code...
+        plt.plot(dataset.index, dataset["Sales"], label='Original')
+        # Plot the trend component
+        plt.plot(dataset.index, result.trend, label='Trend')
+
+        # Plot the seasonal component
+        plt.plot(dataset.index, result.seasonal, label='Seasonal')
+        plt.title('Seasonal Component')
+        plt.xlabel('Time')
+        plt.ylabel('Seasonal')
+        plt.gca().xaxis.set_major_locator(mdates.YearLocator())
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        plt.legend()
+        # Save the plot to a BytesIO object
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Convert the BytesIO object to a base64 string
+        image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+
+        # Create a data URL from the base64 string
+        image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
+        return {"status": True, "seasonal_plot": image_data_url}
+
 
 api.add_resource(FPsummary, "/fplot")
-api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
+api.add_resource(SeasonalDistribution, "/seasonal-distribution")       
 
 class TimeSeriesResource(Resource):
     def get(self):
