@@ -20,7 +20,10 @@ import io
 import base64
 import urllib
 from pycaret.time_series import load_experiment as ts_load_experiment
-
+from pmdarima import auto_arima
+from pmdarima.arima.utils import ndiffs
+from scipy import stats
+import numpy as np
 
 
 app = Flask((__name__))
@@ -126,7 +129,6 @@ def validate_credentials(email, password):
         return True
     else:
         return False
-
 
 class Signup(Resource):
     def post(self):
@@ -393,16 +395,17 @@ class FPsummary(Resource):
             # data.set_index(primary_timestamp_column, inplace=True)
 
 
-        # data.fillna(method="ffill", inplace=True)
+        data.fillna(method="ffill", inplace=True)
+        data.index=data.index.to_period("D")
 
         exp = ts_load_experiment(io.BytesIO(model["model_data"]),data=data)
-
 
         actual_data = {str(index): value for index, value in zip(data.index[-n:], data[target][-n:])} 
 
         forecast_data = pd.DataFrame(index=range(len(data), len(data) + n))
 
         # Use predict_model to make forecasts
+        print(data.tail(n))
         print(exp.predict_model(estimator=exp_model, fh=n,X=data.tail(n)))
         forecast_values = exp.predict_model(estimator=exp_model, fh=n)
         
