@@ -1,1 +1,3 @@
 django\mysite\main\__pycache__
+*.pkl
+logs.log

@@ -5,16 +5,25 @@ from pymongo import MongoClient
 import pandas as pd
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.clustering import ClusteringExperiment
-# from pycaret.internal.pycaret_experiment import TimeSeriesExperiment, ClusteringExperiment
-import pickle
+import dill
 from bson.binary import Binary
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import uuid
 from flask import Flask, jsonify
 from flask_restful import Api, Resource
 from statsmodels.tsa.seasonal import seasonal_decompose
+from bson import Binary,ObjectId
+import io
+import base64
+import urllib
+from pycaret.time_series import load_experiment as ts_load_experiment
+from pmdarima import auto_arima
+from pmdarima.arima.utils import ndiffs
+from scipy import stats
+import numpy as np
 
 
 app = Flask((__name__))
@@ -36,6 +45,29 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+class check(Resource):
+    def get(self):
+        return {"status":True,"message":"Server is running"}
+
+
+def check_validity(user_id, dataset_id):
+    user_record = user_data.find_one({"user_id": user_id})
+    if user_record:
+        dataset_record = dataset_collection.find_one({"_id": ObjectId(dataset_id)})
+
+        if dataset_record:
+            print(dataset_record["content_type"])
+            if dataset_record["content_type"] == "text/csv":
+                df = pd.read_csv(io.BytesIO(dataset_record["file_data"]))
+            elif dataset_record["content_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                df = pd.read_excel(io.BytesIO(dataset_record["file_data"]))
+            else:
+                return {"status": False, "message": "Invalid file format"}
+            return df
+        else:
+            return {"status": False, "message": "Invalid dataset_id"}
+    return {"status": False, "message": "Invalid user_id"}
+
 class file_upload(Resource):
     def post(self):
         try:
@@ -55,26 +87,12 @@ class file_upload(Resource):
                 time_stamp=datetime.now()
                 result = dataset_collection.insert_one({"file_data": file_data,"time_stamp":time_stamp, "filename": filename, "content_type": content_type, "user_id": user_id})
                 file_id = str(result.inserted_id)
-                file_url = url_for("get_dataset", file_id=file_id, _external=True)
 
-                data = {
-                    "time_stamp":time_stamp,
-                    "user_id": user_id,
-                    "file_id": file_id,
-                    "content_type": content_type,
-                    "dataset_url": file_url,
-                    "model_url":None,
-                    "model_id":None
-                }
-
-                user_data.delete_one({"user_id": user_id})
-                user_data.insert_one(data)
 
                 return jsonify({
                     "status": True,
                     "message": "File uploaded",
                     "file_id": file_id,
-                    "file_url": file_url  
                 })
             else:
                 return jsonify({
@@ -111,7 +129,6 @@ def validate_credentials(email, password):
         return True
     else:
         return False
-
 
 class Signup(Resource):
     def post(self):
@@ -152,19 +169,30 @@ class BaseModel:
         self.data = data
         self.target = target
         self.session_id = session_id
-        self.client = MongoClient('mongodb://localhost:27017/')
-        self.db = self.client[db_name]
-        self.collection = self.db[collection_name]
+
 
     def save_data(self, user_id):
-        pickled_data = Binary(pickle.dumps(self.data))
-        result=self.collection.insert_one({'user_id': user_id, 'data': pickled_data})
+        dilld_data = Binary(dill.dumps(self.data))
+        result=self.collection.insert_one({'user_id': user_id, 'data': dilld_data})
+
+
+    def save_experiment_to_binary(self, experiment):
+        # Save the experiment to a BytesIO object
+        experiment_binary_io = io.BytesIO()
+        experiment.save_experiment(experiment_binary_io)
+        experiment_binary_io.seek(0)
+        
+        # Convert the BytesIO object to binary data
+        experiment_binary = Binary(experiment_binary_io.read())
+        experiment_binary_io.close()
+
+        return experiment_binary
 
 
     def get_data(self, data_id):
         record = self.collection.find_one({'data_id': data_id})
         if record is not None:
-            self.data = pickle.loads(record['data'])
+            self.data = dill.loads(record['data'])
         else:
             print(f"No data found for ID {data_id}.")
 
@@ -190,8 +218,8 @@ class BaseModel:
             return
 
         # Save data to MongoDB
-        pickled_data = Binary(pickle.dumps(self.data))
-        self.collection.insert_one({'data_id': data_id, 'data': pickled_data})
+        dilld_data = Binary(dill.dumps(self.data))
+        self.collection.insert_one({'data_id': data_id, 'data': dilld_data})
 
     def setup(self):
         pass
@@ -199,25 +227,53 @@ class BaseModel:
     def compare_models(self):
         pass
 
-    def save_model(self, model_type, best_model, dataset_id):
-        pickled_model = Binary(pickle.dumps(best_model))
-        self.collection.insert_one({'model_type': model_type, 'model': pickled_model, 'dataset_id': dataset_id})
+    def save_model(self, model_type, model, experiment, dataset_id):
+        self.model=Binary(dill.dumps(model))
+        model_record = model_collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
+        if model_record is not None:
+            print("here")
+            model_collection.update_one(
+                {'model_type': model_type, 'dataset_id': dataset_id},
+                {'$set': {'model_data': experiment, 'model': self.model}}
+            )
+        else:
+            model_collection.insert_one({'model_type': model_type, 'model_data': experiment, 'model': self.model, 'dataset_id': dataset_id, 'target': self.target})
 
     def load_model(self, model_type, dataset_id):
         record = self.collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
         if record is not None:
-            return pickle.loads(record['model'])
+            return dill.loads(record['model'])
         else:
             return None
 
 class TimeSeriesModel(BaseModel):
     def setup(self):
         self.ts_exp = TSForecastingExperiment()
-        self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id)
+        # Identify columns that might contain dates and convert them to datetime
+        object_columns = self.data.select_dtypes(include=['object']).columns
 
-    def compare_models(self):
-        self.model = self.ts_exp.compare_models()
-        self.save_model('Time_Series', self.model, self.data_id)
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                self.data[column] = pd.to_datetime(self.data[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted timestamp
+            
+        timestamp_columns = self.data.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            self.data.drop(columns=list(timestamp_columns[1:]), inplace=True)
+            self.data = self.data.resample('D', on=timestamp_columns[0]).sum().reset_index()
+            self.data.set_index(primary_timestamp_column, inplace=True)
+
+        self.data.fillna(method="ffill", inplace=True)
+        self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id,numeric_imputation_target='mean', numeric_imputation_exogenous=True)
+
+    def compare_models(self,data_id):
+        # self.model = self.ts_exp.compare_models()
+        self.model=self.ts_exp.create_model('auto_arima')
+        exp=self.save_experiment_to_binary(self.ts_exp)
+        self.save_model('Time_Series',self.model, exp, data_id)
 
     def plot_feature_importance(self):
         if self.model is None:
@@ -265,11 +321,11 @@ class TimeSeriesModel(BaseModel):
             return None
 
         # Generate forecast
-        forecast_df = self.ts_exp.predict_model(self.model, n_periods=len(self.data))
+        forecast_df = self.ts_exp.predict_model(self.model,fh=24)
         # Calculate summary statistics
         summary_stats = forecast_df.describe()
 
-        return summary_stats
+        return summary_stats.to_dict()
 
     def calculate_seasonal_distribution(self):
         if self.model is None:
@@ -296,55 +352,172 @@ class ClusteringModel(BaseModel):
 
 
 
-class ForecastPlotSummary(Resource):
-    def get(self, data_id):
+class FPsummary(Resource):
+    def post(self):
         # Retrieve the forecast plot summary for the given data_id
-        
-        # Search for dataset with the given dataset ID
-        dataset = dataset_collection.find_one({'dataset_id': data_id})
-        
-        if dataset is None:
-            return jsonify({'error': 'Dataset not found'}), 404
-        
+        data=request.get_json()
+        data_id = data['data_id']
+        n=int(data['n_periods'])
+        user_id=data['user_id']
+        target=data['target']
+
+        validity=check_validity(user_id,data_id)
+        if isinstance(validity,pd.DataFrame):
+            dataset=validity
+        else:
+            return validity
+
         # Retrieve the associated model
-        model = load_model('model_db', 'models', data_id)
-        
+        model = model_collection.find_one({'dataset_id': data_id,'model_type':"Time_Series"},{'model_data':1,"model":1})
         if model is None:
-            return jsonify({'error': 'Model not found'}), 404
+            return {'error': 'Model not found'}, 404
+
+        # # Load the experiment
+        exp_model= dill.loads(model["model"])
+        data=dataset
+        object_columns = data.select_dtypes(include=['object']).columns
+
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                data[column] = pd.to_datetime(data[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted timestamp
+            
+        timestamp_columns = data.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            data.drop(columns=list(timestamp_columns[1:]), inplace=True)
+            data.set_index(primary_timestamp_column, inplace=True)
+            data = data.resample('D').sum()
+            print(data.head())
+            data.index=pd.to_datetime(data.index)
+            # data.set_index(primary_timestamp_column, inplace=True)
+
+
+        data.fillna(method="ffill", inplace=True)
+        data.index=data.index.to_period("D")
+
+        exp = ts_load_experiment(io.BytesIO(model["model_data"]),data=data)
+
+        actual_data = {str(index): value for index, value in zip(data.index[-n:], data[target][-n:])} 
+
+        forecast_data = pd.DataFrame(index=range(len(data), len(data) + n))
+
+        # Use predict_model to make forecasts
+        print(data.tail(n))
+        print(exp.predict_model(estimator=exp_model, fh=n,X=data.tail(n)))
+        forecast_values = exp.predict_model(estimator=exp_model, fh=n)
         
-        # Generate forecast and plot
-        forecast_df = model.forecast(n_periods=10)  # Change the value of n_periods as needed
+        summary_stats = forecast_values.describe().to_dict()
 
-        # Prepare data for the frontend
-        actual_data = [{'x': str(index), 'y': value} for index, value in zip(dataset.index[-10:], dataset['target'][-10:])]
-        forecast_data = [{'x': str(index), 'y': value} for index, value in zip(forecast_df.index, forecast_df['Label'])]
+        # Prepare forecast data for the frontend
+        forecast_data = {str(index): value for index, value in zip(range(len(data), len(data) + n), forecast_values['Label'])}
 
-        return jsonify({"status":True,"actual_data": actual_data, "forecast_data": forecast_data})
+        # Create a plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(len(data), len(data) + n), forecast_values['Label'])
+        plt.title('Forecast')
+        plt.xlabel('Time')
+        plt.ylabel('Forecast')
 
+        # Save the plot to a BytesIO object
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Convert the BytesIO object to a base64 string
+        image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+
+        # Create a data URL from the base64 string
+        image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
+
+        return {"status": True, "summary_stats":summary_stats, "actual_data": actual_data, "forecast_data": forecast_data, "forecast_plot": image_data_url}
 class SeasonalDistribution(Resource):
-    def get(self, data_id):
+    def get(self):
+        # Retrieve the dataset with the given data_id
+        data = request.get_json()
+        data_id = data['data_id']
+        user_id = data['user_id']
+        dataset = dataset_collection.find_one({'_id': ObjectId(data_id)})
+        validity = check_validity(user_id, data_id)
+        if isinstance(validity, pd.DataFrame):
+            dataset = validity
+        else:
+            return validity
 
-        return jsonify({"message": f"Seasonal distribution for data_id {data_id}."})
+        object_columns = dataset.select_dtypes(include=['object']).columns
 
-# Existing code...
+        # Identify columns that might contain dates and convert them to datetime
+        for column in object_columns:
+            try:
+                dataset[column] = pd.to_datetime(dataset[column])
+            except (TypeError, ValueError):
+                pass  # Ignore columns that cannot be converted t
+            
+        timestamp_columns = dataset.select_dtypes(include=['datetime64']).columns
+        if timestamp_columns.any():
+            primary_timestamp_column = timestamp_columns[0]
+            dataset = dataset.set_index(primary_timestamp_column) 
+            dataset.drop(columns=list(timestamp_columns[1:]), inplace=True)
 
-api.add_resource(ForecastPlotSummary, "/forecast-plot-summary/<string:data_id>")
-api.add_resource(SeasonalDistribution, "/seasonal-distribution/<string:data_id>")       
+        dataset.fillna(method="ffill", inplace=True)
+        dataset = dataset.resample('M').sum()
+        result = seasonal_decompose(dataset["Sales"], model='additive', period=5, extrapolate_trend='freq')
+        print(result.trend.head())
+        print(result.seasonal.head())
+        print(result.resid.head())
+        # Create a plot
+        plt.figure(figsize=(10, 6))
+
+        plt.plot(dataset.index, dataset["Sales"], label='Original')
+        # Plot the trend component
+        plt.plot(dataset.index, result.trend, label='Trend')
+
+        # Plot the seasonal component
+        plt.plot(dataset.index, result.seasonal, label='Seasonal')
+        plt.title('Seasonal Component')
+        plt.xlabel('Time')
+        plt.ylabel('Seasonal')
+        plt.gca().xaxis.set_major_locator(mdates.YearLocator())
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        plt.legend()
+        # Save the plot to a BytesIO object
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Convert the BytesIO object to a base64 string
+        image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+
+        # Create a data URL from the base64 string
+        image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
+        return {"status": True, "seasonal_plot": image_data_url}
+
+
+api.add_resource(FPsummary, "/fplot")
+api.add_resource(SeasonalDistribution, "/seasonal-distribution")       
 
 class TimeSeriesResource(Resource):
-    def get(self, user_id, dataset_id):
+    def get(self):
         # Retrieve dataset from the dataset collection using user ID and dataset ID
-        dataset = dataset_collection.find_one({'user_id': user_id, 'dataset_id': dataset_id})
-        
-        if dataset is None:
-            return jsonify({'error': 'Dataset not found'}), 404
-        
+        dataset_id = request.args['dataset_id']
+        user_id=request.args['user_id']
+        target=request.args['target']
+        validity=check_validity(user_id,dataset_id)
+        if isinstance(validity,pd.DataFrame):
+            df=validity
+        else:
+            return validity
+
         # Load trained time series models from MongoDB
-        model = TimeSeriesModel(data=dataset.data, target=dataset.target, session_id=123, db_name='model_db', collection_name='models')
+        model = TimeSeriesModel(data=df,target=target , session_id=123, db_name='model_db', collection_name='models')
         model.setup()
-        model.compare_models()
+        model.compare_models(data_id=dataset_id)
         
-        return jsonify({'message': 'Time series models trained and saved successfully'}), 200
+        return {'message': 'Time series models trained and saved successfully'}, 200
 
 
 class ClusteringResource(Resource):
@@ -356,7 +529,7 @@ class ClusteringResource(Resource):
             return jsonify({'error': 'Dataset not found'}), 404
         
         # Load trained clustering models from MongoDB
-        model = ClusteringModel(data=dataset.data, target=dataset.target, session_id=123, db_name='model_db', collection_name='models')
+        model = ClusteringModel(data=dataset.data, session_id=123, db_name='model_db', collection_name='models')
         model.setup()
         model.compare_models()
         
