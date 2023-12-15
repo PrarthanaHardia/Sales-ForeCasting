@@ -43,9 +43,54 @@
     <link rel="icon" href="upload/cropped-TG-Thumb-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="upload/cropped-TG-Thumb-180x180.png" />
     <meta name="msapplication-TileImage" content="upload/cropped-TG-Thumb-270x270.png" />
-
-
-
+<style>
+    #ab {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+  
+      #file-upload-container {
+        text-align: center;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+  
+      #file-upload {
+        display: none;
+      }
+  
+      #choose-file-btn {
+        padding: 10px 20px;
+        border: 2px solid black;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        color: black;
+      }
+  
+      #file-name {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+  
+      #upload-btn {
+        margin-top: 20px;
+        padding: 15px 30px;
+        background-color: #4CAF50;
+        color: white;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        display: none;
+      }
+    </style>
 </head>
 
 <body style="background:black;"data-rsssl="1" class="home theme-craftcoffee  menu-transparent lightbox-black leftalign loftloader-lite-enabled elementor-default elementor-kit-6338 elementor-page elementor-page-4462" >
@@ -368,22 +413,30 @@
             <!-- Begin content -->
             
                     <!-- Begin main content -->
-                    <div class="arm">
-                        <div class="center">
-                            <div class="t">
-                                <h1>Drop file to upload</h1>
-                            </div>
-                    
-                            <div class="dropzone">
-                                <img src="http://100dayscss.com/codepen/upload.svg" class="upload-icon" />
-                                <input type="file" class="upload-input" />
-                            </div>
-                    
-                            <button type="button" class="btn" name="uploadbutton"><a href="../output">Upload file</a></button>
-                    
-                        </div>
-                    </div>
+ <div id="ab">                   
+<div id="file-upload-container">
+    <input type="file" id="file-upload" accept=".zip" onchange="displayFileName()">
+    <label for="file-upload" id="choose-file-btn">Choose File</label>
+    <div id="file-name"></div>
+    <button id="upload-btn" onclick="uploadFile()">Upload</button>
+  </div>
+</div>
 
+  <script>
+    function displayFileName() {
+      var input = document.getElementById('file-upload');
+      var fileName = input.files[0].name;
+      document.getElementById('file-name').innerText = 'Selected File: ' + fileName;
+      document.getElementById('upload-btn').style.display = 'block';
+    }
+
+    function uploadFile() {
+      // Add your file upload logic here
+      alert('File uploaded!');
+    }
+  </script>
+
+  
 
 
                                        
