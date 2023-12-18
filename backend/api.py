@@ -3,9 +3,7 @@ from flask_restful import Resource, Api
 from flask_cors import CORS
 from pymongo import MongoClient
 import pandas as pd
-from pycaret.time_series import TSForecastingExperiment
-from pycaret.clustering import ClusteringExperiment
-import dill
+import pickle
 from bson.binary import Binary
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -19,11 +17,15 @@ from bson import Binary,ObjectId
 import io
 import base64
 import urllib
-from pycaret.time_series import load_experiment as ts_load_experiment
 from pmdarima import auto_arima
 from pmdarima.arima.utils import ndiffs
 from scipy import stats
 import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import seaborn as sns
+
 
 
 app = Flask((__name__))
@@ -114,8 +116,7 @@ class Login(Resource):
         # Check if user_id and password are valid
         # Save user data to MongoDB
         if validate_credentials(email, password):
-            # self.save_user_data(user_id, password)
-            # Return success response
+
             return {'message': 'Login successful'}, 200
         else:
             return {'message': 'Invalid credentials'}, 401
@@ -164,193 +165,6 @@ api.add_resource(file_upload,"/upload")
 api.add_resource(Login, "/login")
 api.add_resource(Signup, "/signup")
 
-class BaseModel:
-    def __init__(self, data, target, session_id, db_name, collection_name):
-        self.data = data
-        self.target = target
-        self.session_id = session_id
-
-
-    def save_data(self, user_id):
-        dilld_data = Binary(dill.dumps(self.data))
-        result=self.collection.insert_one({'user_id': user_id, 'data': dilld_data})
-
-
-    def save_experiment_to_binary(self, experiment):
-        # Save the experiment to a BytesIO object
-        experiment_binary_io = io.BytesIO()
-        experiment.save_experiment(experiment_binary_io)
-        experiment_binary_io.seek(0)
-        
-        # Convert the BytesIO object to binary data
-        experiment_binary = Binary(experiment_binary_io.read())
-        experiment_binary_io.close()
-
-        return experiment_binary
-
-
-    def get_data(self, data_id):
-        record = self.collection.find_one({'data_id': data_id})
-        if record is not None:
-            self.data = dill.loads(record['data'])
-        else:
-            print(f"No data found for ID {data_id}.")
-
-    def delete_data(self, data_id):
-        self.collection.delete_one({'data_id': data_id})
-
-
-    def load_data(self, file_path, target, data_id):
-        # Determine file type
-        if file_path.endswith('.csv'):
-            self.data = pd.read_csv(file_path)
-        elif file_path.endswith('.xlsx'):
-            self.data = pd.read_excel(file_path)
-        else:
-            print("Invalid file type. Please provide a CSV or Excel file.")
-            return
-
-        # Set target
-        if target in self.data.columns:
-            self.target = target
-        else:
-            print(f"Target column {target} not found in data.")
-            return
-
-        # Save data to MongoDB
-        dilld_data = Binary(dill.dumps(self.data))
-        self.collection.insert_one({'data_id': data_id, 'data': dilld_data})
-
-    def setup(self):
-        pass
-
-    def compare_models(self):
-        pass
-
-    def save_model(self, model_type, model, experiment, dataset_id):
-        self.model=Binary(dill.dumps(model))
-        model_record = model_collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
-        if model_record is not None:
-            print("here")
-            model_collection.update_one(
-                {'model_type': model_type, 'dataset_id': dataset_id},
-                {'$set': {'model_data': experiment, 'model': self.model}}
-            )
-        else:
-            model_collection.insert_one({'model_type': model_type, 'model_data': experiment, 'model': self.model, 'dataset_id': dataset_id, 'target': self.target})
-
-    def load_model(self, model_type, dataset_id):
-        record = self.collection.find_one({'model_type': model_type, 'dataset_id': dataset_id})
-        if record is not None:
-            return dill.loads(record['model'])
-        else:
-            return None
-
-class TimeSeriesModel(BaseModel):
-    def setup(self):
-        self.ts_exp = TSForecastingExperiment()
-        # Identify columns that might contain dates and convert them to datetime
-        object_columns = self.data.select_dtypes(include=['object']).columns
-
-        # Identify columns that might contain dates and convert them to datetime
-        for column in object_columns:
-            try:
-                self.data[column] = pd.to_datetime(self.data[column])
-            except (TypeError, ValueError):
-                pass  # Ignore columns that cannot be converted timestamp
-            
-        timestamp_columns = self.data.select_dtypes(include=['datetime64']).columns
-        if timestamp_columns.any():
-            primary_timestamp_column = timestamp_columns[0]
-            self.data.drop(columns=list(timestamp_columns[1:]), inplace=True)
-            self.data = self.data.resample('D', on=timestamp_columns[0]).sum().reset_index()
-            self.data.set_index(primary_timestamp_column, inplace=True)
-
-        self.data.fillna(method="ffill", inplace=True)
-        self.ts_exp.setup(data=self.data, target=self.target, session_id=self.session_id,numeric_imputation_target='mean', numeric_imputation_exogenous=True)
-
-    def compare_models(self,data_id):
-        # self.model = self.ts_exp.compare_models()
-        self.model=self.ts_exp.create_model('auto_arima')
-        exp=self.save_experiment_to_binary(self.ts_exp)
-        self.save_model('Time_Series',self.model, exp, data_id)
-
-    def plot_feature_importance(self):
-        if self.model is None:
-            print("No model found.")
-            return None
-        # Check if the model is a type that has feature importance
-
-        if hasattr(self.model, 'feature_importances_'):
-            # Get feature importance
-            importances = self.model.feature_importances_
-
-            # Create a DataFrame for visualization
-            importance_df = pd.DataFrame({
-                'Feature': self.data.columns,
-                'Importance': importances
-            })
-
-            # Sort by importance
-            importance_df = importance_df.sort_values(by='Importance', ascending=False)
-
-            # Plot
-            importance_df.plot(kind='bar', x='Feature', y='Importance')
-            plt.title('Feature Importance')
-            plt.show()
-        else:
-            print('The best model does not support feature importance.')
-
-    def forecast(self, n_periods):
-        if self.model is None:
-            print("No model found.")
-            return None
-
-        # Generate forecast
-        forecast_df = self.ts_exp.predict_model(self.model, n_periods=n_periods)
-        # Plot the last n_periods of the original data and the forecast
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.data.index[-n_periods:], self.data[self.target][-n_periods:], label='Actual')
-        plt.plot(forecast_df.index, forecast_df['Label'], label='Forecast')
-        plt.legend()
-        plt.show()
-
-    def calculate_summary_stats(self):
-        if self.model is None:
-            print("No model found.")
-            return None
-
-        # Generate forecast
-        forecast_df = self.ts_exp.predict_model(self.model,fh=24)
-        # Calculate summary statistics
-        summary_stats = forecast_df.describe()
-
-        return summary_stats.to_dict()
-
-    def calculate_seasonal_distribution(self):
-        if self.model is None:
-            print("No model found.")
-            return None
-
-        # Generate forecast
-        forecast_df = self.ts_exp.predict_model(self.model, n_periods=len(self.data))
-        # Calculate seasonal distribution
-        seasonal_distribution = forecast_df.groupby(forecast_df.index.month).mean()
-
-        return seasonal_distribution
-
-
-class ClusteringModel(BaseModel):
-    def setup(self):
-        self.clustering_exp = ClusteringExperiment()
-        self.clustering_exp.setup(data=self.data, session_id=self.session_id)
-
-    def compare_models(self):
-        self.best_model = self.clustering_exp.create_model("kmeans")
-        self.save_model('KMeans_Clustering', self.best_model)
-
-
-
 
 class FPsummary(Resource):
     def post(self):
@@ -368,12 +182,11 @@ class FPsummary(Resource):
             return validity
 
         # Retrieve the associated model
-        model = model_collection.find_one({'dataset_id': data_id,'model_type':"Time_Series"},{'model_data':1,"model":1})
-        if model is None:
+        model = model_collection.find_one({'dataset_id': data_id,'model_type':"Timeseries"},{"model":1})
+        if model:
+            model = pickle.loads(model['model'])
+        else:
             return {'error': 'Model not found'}, 404
-
-        # # Load the experiment
-        exp_model= dill.loads(model["model"])
         data=dataset
         object_columns = data.select_dtypes(include=['object']).columns
 
@@ -383,43 +196,60 @@ class FPsummary(Resource):
                 data[column] = pd.to_datetime(data[column])
             except (TypeError, ValueError):
                 pass  # Ignore columns that cannot be converted timestamp
-            
+
         timestamp_columns = data.select_dtypes(include=['datetime64']).columns
         if timestamp_columns.any():
             primary_timestamp_column = timestamp_columns[0]
             data.drop(columns=list(timestamp_columns[1:]), inplace=True)
             data.set_index(primary_timestamp_column, inplace=True)
-            data = data.resample('D').sum()
-            print(data.head())
-            data.index=pd.to_datetime(data.index)
-            # data.set_index(primary_timestamp_column, inplace=True)
-
+            data = data.resample('M').sum()
+            data.index = pd.to_datetime(data.index)
 
         data.fillna(method="ffill", inplace=True)
-        data.index=data.index.to_period("D")
+        data.index = data.index.to_period("M")
 
-        exp = ts_load_experiment(io.BytesIO(model["model_data"]),data=data)
+        # Identify and remove rows with missing or problematic values
+        data.dropna(inplace=True)
 
-        actual_data = {str(index): value for index, value in zip(data.index[-n:], data[target][-n:])} 
+        # Outlier detection and removal using Z-score
+        z_scores = stats.zscore(data.select_dtypes(include=['float64', 'int64']))
+        abs_z_scores = abs(z_scores)
+        filtered_entries = (abs_z_scores < 3).all(axis=1)
+        data = data[filtered_entries]
+
+        # Check and handle stationarity
+        for column in data.columns:
+            d = ndiffs(data[column], test='adf')
+            if d > 0:
+                data[column] = data[column].diff(d)
+
+        actual_data = {str(index): value for index, value in zip(data.index[-n:], data[target][-n:])}
 
         forecast_data = pd.DataFrame(index=range(len(data), len(data) + n))
-
-        # Use predict_model to make forecasts
-        print(data.tail(n))
-        print(exp.predict_model(estimator=exp_model, fh=n,X=data.tail(n)))
-        forecast_values = exp.predict_model(estimator=exp_model, fh=n)
-        
-        summary_stats = forecast_values.describe().to_dict()
+        # Use ARIMA for forecasting
+        y = data[target].tail(n)
+        model=model['model']
+        y_pred = model.predict(n_periods=n,X=y)
+        print(y_pred.describe())
+        summary_stats = {"mean": y_pred.mean(), "std": y_pred.std()}
+        print(summary_stats)
 
         # Prepare forecast data for the frontend
-        forecast_data = {str(index): value for index, value in zip(range(len(data), len(data) + n), forecast_values['Label'])}
-
+        forecast_data = {str(index): value for index, value in zip(range(len(data), len(data) + n), y_pred)}
+        print(y.index,y_pred.index)
         # Create a plot
+        y.index = y.index.to_timestamp()
+        y_pred.index = y_pred.index.to_timestamp()
         plt.figure(figsize=(10, 6))
-        plt.plot(range(len(data), len(data) + n), forecast_values['Label'])
+        plt.plot(y.index, y.values, label="Actual", color="blue")
+        # Plot forecast data
+        plt.plot(y_pred.index, y_pred.values, label="Forecast", color="orange")
         plt.title('Forecast')
         plt.xlabel('Time')
-        plt.ylabel('Forecast')
+        plt.ylabel(target)
+        plt.gca().xaxis.set_major_locator(mdates.YearLocator())
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%M'))
+        plt.legend()
 
         # Save the plot to a BytesIO object
         buf = io.BytesIO()
@@ -433,7 +263,11 @@ class FPsummary(Resource):
         # Create a data URL from the base64 string
         image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
 
-        return {"status": True, "summary_stats":summary_stats, "actual_data": actual_data, "forecast_data": forecast_data, "forecast_plot": image_data_url}
+        return {"status": True, "summary_stats": summary_stats, "actual_data": actual_data,
+                "forecast_data": forecast_data, "forecast_plot": image_data_url}
+
+api.add_resource(FPsummary, "/fplot")
+
 class SeasonalDistribution(Resource):
     def get(self):
         # Retrieve the dataset with the given data_id
@@ -496,9 +330,53 @@ class SeasonalDistribution(Resource):
         image_data_url = 'data:image/png;base64,' + urllib.parse.quote(image_base64)
         return {"status": True, "seasonal_plot": image_data_url}
 
+api.add_resource(SeasonalDistribution, "/seasonal-distribution")   
 
-api.add_resource(FPsummary, "/fplot")
-api.add_resource(SeasonalDistribution, "/seasonal-distribution")       
+
+def sales_forecasting(data, target_column):
+    object_columns = data.select_dtypes(include=['object']).columns
+
+    # Identify columns that might contain dates and convert them to datetime
+    for column in object_columns:
+        try:
+            data[column] = pd.to_datetime(data[column])
+        except (TypeError, ValueError):
+            pass  # Ignore columns that cannot be converted timestamp
+
+    timestamp_columns = data.select_dtypes(include=['datetime64']).columns
+    if timestamp_columns.any():
+        primary_timestamp_column = timestamp_columns[0]
+        data.drop(columns=list(timestamp_columns[1:]), inplace=True)
+        data.set_index(primary_timestamp_column, inplace=True)
+        data = data.resample('D').sum()
+        data.index = pd.to_datetime(data.index)
+
+    data.fillna(method="ffill", inplace=True)
+    data.index = data.index.to_period("D")
+
+    # Identify and remove rows with missing or problematic values
+    data.dropna(inplace=True)
+
+    # Outlier detection and removal using Z-score
+    z_scores = stats.zscore(data.select_dtypes(include=['float64', 'int64']))
+    abs_z_scores = abs(z_scores)
+    filtered_entries = (abs_z_scores < 3).all(axis=1)
+    data = data[filtered_entries]
+
+    # Check and handle stationarity
+    for column in data.columns:
+        d = ndiffs(data[column], test='adf')
+        if d > 0:
+            data[column] = data[column].diff(d)
+    print(data.head())
+    # Train auto ARIMA model
+    try:
+        model = auto_arima(data[target_column], suppress_warnings=True)
+        model.fit(data[target_column])
+    except:
+        return {"status": "Error", "error": "Error in training auto ARIMA model"}
+
+    return {"status": "success", "model": model}
 
 class TimeSeriesResource(Resource):
     def get(self):
@@ -512,30 +390,77 @@ class TimeSeriesResource(Resource):
         else:
             return validity
 
-        # Load trained time series models from MongoDB
-        model = TimeSeriesModel(data=df,target=target , session_id=123, db_name='model_db', collection_name='models')
-        model.setup()
-        model.compare_models(data_id=dataset_id)
-        
-        return {'message': 'Time series models trained and saved successfully'}, 200
+        model =sales_forecasting(data=df,target_column=target)
+        print(model)
+        if model["status"]=="success":
+            model=pickle.dumps(model)
+            
+            model_record = model_collection.find_one({'model_type': "Timeseries", 'dataset_id': dataset_id})
+            if model_record is not None:
+                print("here")
+                model_collection.update_one(
+                    {'model_type': "Timeseries", 'dataset_id': dataset_id},
+                    {'$set': { 'model': model}}
+                )
+            else:
+                model_collection.insert_one({'model_type': "Timeseries", 'model': model, 'dataset_id': dataset_id, 'target': target})
+
+            return {'message': 'Time series models trained and saved successfully'}, 200
+
+        else:
+            return model,400
 
 
 class ClusteringResource(Resource):
-    def get(self, user_id, dataset_id):
-        # Retrieve dataset from the dataset collection using user ID and dataset ID
-        dataset = dataset_collection.find_one({'user_id': user_id, 'dataset_id': dataset_id})
-        
-        if dataset is None:
-            return jsonify({'error': 'Dataset not found'}), 404
-        
-        # Load trained clustering models from MongoDB
-        model = ClusteringModel(data=dataset.data, session_id=123, db_name='model_db', collection_name='models')
-        model.setup()
-        model.compare_models()
-        
-        return jsonify({'message': 'Clustering models trained and saved successfully'}), 200
+    def get(self):
+        data=request.get_json()
+        data_id = data['data_id']
+        n=int(data['n_periods'])
+        user_id=data['user_id']
+        target=data['target']
 
+        validity=check_validity(user_id,data_id)
+        if isinstance(validity,pd.DataFrame):
+            data=validity
+        else:
+            return validity
 
+        
+            scaler = StandardScaler()
+            scaled_data = scaler.fit_transform(numeric_data)
+
+            # Use the elbow method to find the optimal number of clusters
+            wcss = []
+            for i in range(1, 11):
+                kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=0)
+                kmeans.fit(scaled_data)
+                wcss.append(kmeans.inertia_)
+
+            # Plot the elbow method
+            plt.plot(range(1, 11), wcss, marker='o')
+            plt.title('Elbow Method')
+            plt.xlabel('Number of Clusters')
+            plt.ylabel('WCSS (Within-Cluster Sum of Squares)')
+            plt.show()
+
+            # Based on the elbow method, choose the optimal number of clusters
+            # Replace 'optimal_clusters' with the number you choose
+            optimal_clusters = 3
+
+            # Perform K-means clustering with the optimal number of clusters
+            kmeans = KMeans(n_clusters=optimal_clusters, init='k-means++', max_iter=300, n_init=10, random_state=0)
+            data['Cluster'] = kmeans.fit_predict(scaled_data)
+
+            # Visualize the clusters using pair plot
+            sns.pairplot(data, hue='Cluster')
+            plt.suptitle('Pair Plot with Clusters', y=1.02)
+            plt.show()
+
+            # Analyze the characteristics of each cluster
+            cluster_stats = data.groupby('Cluster').mean()
+            print("Cluster Statistics:")
+            print(cluster_stats)
+            
 api.add_resource(TimeSeriesResource, '/timeseries')
 api.add_resource(ClusteringResource, '/clustering')
 if __name__ == '__main__':
