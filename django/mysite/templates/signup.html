@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>signup</title>
-<<<<<<< HEAD
     {% comment %} <link rel="stylesheet" href="static/styles/signup.css"> {% endcomment %}
     
 
@@ -41,24 +40,12 @@
     <meta name="msapplication-TileImage" content="upload/cropped-TG-Thumb-270x270.png" />
 
 
-=======
-    <link rel="stylesheet" href="static/styles/signup.css">
->>>>>>> 1838a60ca022b54bc2cbb799b9815db967d27397
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
   </head>
 
 
 
 
-<<<<<<< HEAD
-
-=======
-              <form id="signup-form">
-                <div class="form-outline mb-4">
-                  <input type="text" id="name" class="form-control form-control-lg" />
-                  <label class="form-label" for="form3Example1cg">Your Name</label>
-                </div>
->>>>>>> 1838a60ca022b54bc2cbb799b9815db967d27397
 
 
 
@@ -236,26 +223,7 @@
                                                         data-widget_type="social-icons.default"
                                                     >
                                                         <div class="elementor-widget-container">
-                                                            <div class="elementor-social-icons-wrapper elementor-grid">
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-ok elementor-repeater-item-fac257c" target="_blank">
-                                                                        <span class="elementor-screen-only">Facebook</span>
-                                                                        <i class="fab fa-facebook"></i>
-                                                                    </a>
-                                                                </div>
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-instagram elementor-repeater-item-4238c6b" target="_blank">
-                                                                        <span class="elementor-screen-only">Instagram</span>
-                                                                        <i class="fab fa-instagram"></i>
-                                                                    </a>
-                                                                </div>
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-yelp elementor-repeater-item-e0f5af3" target="_blank">
-                                                                        <span class="elementor-screen-only">help</span>
-                                                                        <i class="fab fa-yelp"></i>
-                                                                    </a>
-                                                                </div>
-                                                            </div>
+                                                            
                                                         </div>
                                                     </div>
                                                     <div
@@ -266,9 +234,7 @@
                                                         data-widget_type="craftcoffee-search.default"
                                                     >
                                                         <div class="elementor-widget-container">
-                                                            <div class="craftcoffee-search-icon">
-                                                                <a data-open="tg_search_9c9f0b7" href="javascript:;"><i aria-hidden="true" class="fas fa-search"></i></a>
-                                                            </div>
+                                                            
 
                                                             <div id="tg_search_9c9f0b7" class="craftcoffee-search-wrapper">
                                                                 <div class="craftcoffee-search-inner">
@@ -397,8 +363,8 @@
                           {% csrf_token %}
           
                           <div class="form-outline mb-4">
-                            <input type="text" id="username" class="form-control form-control-lg" />
-                            <label class="form-label" for="username">Your Name</label>
+                            <input type="text" id="name" class="form-control form-control-lg" />
+                            <label class="form-label" for="name">Your Name</label>
                             <div id="name-error"></div>
 
                           </div>
@@ -448,7 +414,7 @@
 
           <script>
             function validateForm() {
-              var nameInput = document.getElementById('username');
+              var nameInput = document.getElementById('name');
               var emailInput = document.getElementById('email');
               var passwordInput = document.getElementById('password');
               var nameError = document.getElementById('name-error');
@@ -480,24 +446,13 @@
                 // Additional check for name and password
                 if (nameInput.value.trim() !== "" && passwordInput.value.trim() !== "") {
                   // Add your registration logic here
-                  alert('Registration successful!');
+                  window.location.href = '../login';
                 }
               }
             }
           </script>
         
         
-
-
-
-
-
-
-
-
-
-
-
 
 
 

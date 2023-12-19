@@ -1,8 +1,3 @@
-{% load static %}
-
-
-
-
 <!DOCTYPE html>
 <html lang="en-US" data-menu="leftalign">
 <head>
@@ -13,10 +8,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
- 
-    <link rel="stylesheet" href="/static/style/home.css">
-    <link rel="stylesheet" href="/static/css/logo.css" type="text/css" media="all" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <link rel="stylesheet" href="/static/css/s2.css">
     <link rel="stylesheet" href="/static/css/reset.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/static/css/wordpress.css" type="text/css" media="all" />
     <link rel="stylesheet" href="/static/css/style.css" type="text/css" media="all" />
@@ -48,9 +43,54 @@
     <link rel="icon" href="upload/cropped-TG-Thumb-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="upload/cropped-TG-Thumb-180x180.png" />
     <meta name="msapplication-TileImage" content="upload/cropped-TG-Thumb-270x270.png" />
-
-
-
+<style>
+    #ab {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+  
+      #file-upload-container {
+        text-align: center;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+  
+      #file-upload {
+        display: none;
+      }
+  
+      #choose-file-btn {
+        padding: 10px 20px;
+        border: 2px solid black;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        color: black;
+      }
+  
+      #file-name {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+  
+      #upload-btn {
+        margin-top: 20px;
+        padding: 15px 30px;
+        background-color: #4CAF50;
+        color: white;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        display: none;
+      }
+    </style>
 </head>
 
 <body style="background:black;"data-rsssl="1" class="home theme-craftcoffee  menu-transparent lightbox-black leftalign loftloader-lite-enabled elementor-default elementor-kit-6338 elementor-page elementor-page-4462" >
@@ -139,20 +179,21 @@
                                                             <div class="themegoods-navigation-wrapper menu_style1">
                                                                 <div class="menu-main-menu-container">
                                                                     <ul id="nav_menu34" class="nav">
-                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children ">
-                                                                            <a href="../login">Login</a>
+                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children arrow">
+                                                                            <a href="../start">SaleForeCasting</a>
                                                                              <ul class="sub-menu">
                                                                                 {% comment %} <li class="menu-item">
                                                                                     
                                                                                 </li> {% endcomment %}
-                                                                                
+                                                                                <li class="menu-item"><a href="">Start New Project</a></li>
+                                                                               
                                                                             </ul> 
                                                                         </li>
-                                                                        <li class="menu-item menu-item-has-children ">
-                                                                            <a href="../signup">Register</a>
+                                                                        <li class="menu-item menu-item-has-children arrow">
+                                                                            <a href="../start">Customer Segmentation</a>
                                                                             <ul class="sub-menu">
                                                                                 {% comment %} <li class="menu-item"><a href="home-2.html">time series</a></li> {% endcomment %}
-                                                                                {% comment %} <li class="menu-item"><a href="../time">timeseries</a></li> {% endcomment %}
+                                                                                <li class="menu-item"><a href="../time">Customer Segmentation</a></li>
                                                                             </ul>
                                                                          </li>
                                                                         {% comment %}<li class="menu-item menu-item-has-children arrow">
@@ -223,7 +264,12 @@
                                                         data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
                                                         data-widget_type="social-icons.default"
                                                     >
-                                                        
+                                                        <div class="elementor-widget-container">
+                                                            <div class="elementor-social-icons-wrapper elementor-grid">
+                                                                
+                                                                
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <div
                                                         class="elementor-element elementor-element-9c9f0b7 elementor-widget__width-auto elementor-widget elementor-widget-craftcoffee-search"
@@ -233,7 +279,9 @@
                                                         data-widget_type="craftcoffee-search.default"
                                                     >
                                                         <div class="elementor-widget-container">
-                                                            
+                                                            <div class="craftcoffee-search-icon">
+                                                                <a data-open="tg_search_9c9f0b7" href="javascript:;"><i aria-hidden="true" class="fas fa-search"></i></a>
+                                                            </div>
 
                                                             <div id="tg_search_9c9f0b7" class="craftcoffee-search-wrapper">
                                                                 <div class="craftcoffee-search-inner">
@@ -276,7 +324,31 @@
                                                         data-element_type="widget"
                                                         data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
                                                         data-widget_type="button.default"
+                                                    >    <div class="elementor-column-wrap elementor-element-populated">
+                                                <div class="elementor-widget-wrap">
+                                                    <div
+                                                        class="elementor-element elementor-element-d6b5ce3 elementor-widget elementor-widget-craftcoffee-navigation-menu"
+                                                        data-id="d6b5ce3"
+                                                        data-element_type="widget"
+                                                        data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
+                                                        data-widget_type="craftcoffee-navigation-menu.default"
                                                     >
+                                                        <div class="elementor-widget-container">
+                                                            <div class="themegoods-navigation-wrapper menu_style1">
+                                                                <div class="menu-main-menu-container">
+                                                                    <ul id="nav_menu34" class="nav">
+                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children ">
+                                                                            <a href="../home">Home</a>
+                                                                             
+                                                                        </li>
+                                                                        
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                                         <div class="elementor-widget-container">
                                                             <div class="elementor-button-wrapper">
                                                                 <a href="tel:234.567.3455" class="elementor-button-link elementor-button elementor-size-sm" role="button">
@@ -347,69 +419,106 @@
             </div>
 
             <!-- Begin content -->
-            {% comment %} <nav class="navbar navbar-dark bg-dark fixed-top">
-              <div class="container-fluid">
-                <a class="navbar-brand" href="#">Sale ForeCasting</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasDarkNavbar" aria-controls="offcanvasDarkNavbar">
-                  <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="offcanvasDarkNavbar" aria-labelledby="offcanvasDarkNavbarLabel">
-                  <div class="offcanvas-header">
-                    <h5 class="offcanvas-title" id="offcanvasDarkNavbarLabel">Login</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                  </div>
-                  <div class="offcanvas-body">
-                    <ul class="navbar-nav justify-content-end flex-grow-1 pe-3">
-                      <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="login">Login</a>
-                      </li>
-                      <li class="nav-item">
-                        <a class="nav-link" href="signup">Register</a>
-                      </li> {% endcomment %}
-                      <!-- <li class="nav-item dropdown"> -->
-                        <!-- <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                          Dropdown
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark">
-                          <li><a class="dropdown-item" href="#">Action</a></li>
-                          <li><a class="dropdown-item" href="#">Another action</a></li>
-                          <li>
-                            <hr class="dropdown-divider">
-                          </li>
-                          <li><a class="dropdown-item" href="#">Something else here</a></li>
-                        </ul>
-                      </li>
-                    </ul>
-                    <form class="d-flex mt-3" role="search">
-                      <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-                      <button class="btn btn-success" type="submit">Search</button>
-                    </form> -->
-                  {% comment %} </div>
-                </div>
-              </div>
-            </nav>
-          <!-- carsoual --> {% endcomment %}
-          <div id="carouselExampleRide" class="carousel slide" data-bs-ride="true">
-              <div class="carousel-inner">
-                <div class="carousel-item active">
-                  <img src="/static/images/a.png" class="d-block w-100" alt="...">
-                </div>
-                <div class="carousel-item">
-                  <img src="/static/images/b.jpg" class="d-block w-100" alt="...">
-                </div>
-                <div class="carousel-item">
-                  <img src="/static/images/c.jpg" class="d-block w-100" alt="...">
-                </div>
-              </div>
-              <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleRide" data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
-              </button>
-              <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleRide" data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-              </button>
-            </div>
+            
+                    <!-- Begin main content -->
+ {% comment %} <div id="ab">                   
+<div id="file-upload-container">
+    <input type="file" id="file-upload" accept=".zip" onchange="displayFileName()">
+    <label for="file-upload" id="choose-file-btn">Choose File</label>
+    <div id="file-name"></div>
+    <button id="upload-btn" onclick="uploadFile()">Upload</button>
+  </div>
+</div>
+
+  <script>
+    function displayFileName() {
+      var input = document.getElementById('file-upload');
+      var fileName = input.files[0].name;
+      document.getElementById('file-name').innerText = 'Selected File: ' + fileName;
+      document.getElementById('upload-btn').style.display = 'block';
+    }
+
+    function uploadFile() {
+      // Add your file upload logic here
+      alert('File uploaded!');
+      
+    }
+  </script> {% endcomment %}
+
+  <div id="ab">                   
+    <div id="file-upload-container">
+      <input type="file" id="file-upload" accept=".zip" onchange="displayFileName()">
+      <label for="file-upload" id="choose-file-btn">Choose File</label>
+      <div id="file-name"></div>
+      <button id="upload-btn" onclick="uploadFile()">Upload</button>
+    </div>
+  </div>
+  
+
+
+
+
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("upload-btn").addEventListener("click", function () {
+            var input = document.getElementById("file-upload");
+            var file = input.files[0];
+
+            if (file) {
+                var formData = new FormData();
+                formData.append("file", file);
+
+                fetch("/api/upload", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status) {
+                        alert("File uploaded successfully! File ID: " + data.file_id);
+                        // Optionally, redirect or perform additional actions here
+                    } else {
+                        alert("Error uploading file: " + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+            } else {
+                alert("Please select a file to upload.");
+            }
+        });
+    });
+</script>
+
+
+
+  <script>
+    function displayFileName() {
+      var input = document.getElementById('file-upload');
+      var fileName = input.files[0].name;
+      document.getElementById('file-name').innerText = 'Selected File: ' + fileName;
+      document.getElementById('upload-btn').style.display = 'block';
+    }
+  
+    function uploadFile() {
+        var input = document.getElementById('file-upload');
+        var fileName = input.files[0].name;
+    
+        if (fileName === 'sales.zip') {
+          // Add your file upload logic here
+          alert('File uploaded! Redirecting to the next page...');
+          
+          // Replace 'next_page.html' with the actual URL of your next page
+          window.location.href = '../header';
+        } else {
+          alert('error the file is not appropriate');
+        }
+      }
+  </script>
+  
 
 
                                        
@@ -582,7 +691,9 @@
         };
     </script>
     <script type="text/javascript" src="/static/js/plugins/elementor/assets/js/frontend.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
+    
 </body>
 </html>
 

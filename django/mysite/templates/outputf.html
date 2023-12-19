@@ -8,6 +8,63 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
+
+
+    <style>
+        ab {
+          font-family: 'Arial', sans-serif;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+          background-color: #f4f4f4;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+        }
+    
+        #container {
+          width: 80%;
+          border: 1px solid #ccc;
+          border-radius: 10px;
+          overflow: hidden;
+          display: flex;
+          flex-wrap: wrap; /* Enable wrapping for the sections */
+        }
+    
+        .section-box {
+          border-bottom: 1px solid #ccc;
+          padding: 20px;
+          box-sizing: border-box;
+          overflow: hidden;
+          width: 50%; /* Each section takes up half of the container width */
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+    
+        .chart-container {
+          height: 300px;
+          overflow-x: auto;
+          margin-bottom: 20px;
+        }
+    
+        #first-section {
+          background-color: #f0f0f0; /* Different background color for the first section */
+        }
+    
+        #second-section {
+          background-color: #e0e0e0; /* Different background color for the second section */
+        }
+    
+        #third-section {
+          width: 100%; /* Takes up the full width of the container */
+          text-align: center;
+        }
+      </style>
+
+
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -179,23 +236,9 @@
                                                             <div class="themegoods-navigation-wrapper menu_style1">
                                                                 <div class="menu-main-menu-container">
                                                                     <ul id="nav_menu34" class="nav">
-                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children arrow">
-                                                                            <a href="#">SaleForeCasting</a>
-                                                                             <ul class="sub-menu">
-                                                                                {% comment %} <li class="menu-item">
-                                                                                    
-                                                                                </li> {% endcomment %}
-                                                                                <li class="menu-item"><a href="../start">Start New Project</a></li>
-                                                                                <li class="menu-item"><a href="home-3.html">Load Previous Project</a></li>
-                                                                            </ul> 
-                                                                        </li>
-                                                                        <li class="menu-item menu-item-has-children arrow">
-                                                                            <a href="#">TimeSeries</a>
-                                                                            <ul class="sub-menu">
-                                                                                {% comment %} <li class="menu-item"><a href="home-2.html">time series</a></li> {% endcomment %}
-                                                                                <li class="menu-item"><a href="../time">timeseries</a></li>
-                                                                            </ul>
-                                                                         </li>
+                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children ">
+                                                                           <h4 style="color:white;"> Output</h4>
+                                                                             
                                                                         {% comment %}<li class="menu-item menu-item-has-children arrow">
                                                                             <a href="#">Portfolio</a>
                                                                             <ul class="sub-menu">
@@ -257,36 +300,7 @@
                                         >
                                             <div class="elementor-column-wrap elementor-element-populated">
                                                 <div class="elementor-widget-wrap">
-                                                    <div
-                                                        class="elementor-element elementor-element-9966067 elementor-widget__width-auto elementor-shape-rounded elementor-grid-0 elementor-widget elementor-widget-social-icons"
-                                                        data-id="9966067"
-                                                        data-element_type="widget"
-                                                        data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
-                                                        data-widget_type="social-icons.default"
-                                                    >
-                                                        <div class="elementor-widget-container">
-                                                            <div class="elementor-social-icons-wrapper elementor-grid">
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-ok elementor-repeater-item-fac257c" target="_blank">
-                                                                        <span class="elementor-screen-only">Facebook</span>
-                                                                        <i class="fab fa-facebook"></i>
-                                                                    </a>
-                                                                </div>
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-instagram elementor-repeater-item-4238c6b" target="_blank">
-                                                                        <span class="elementor-screen-only">Instagram</span>
-                                                                        <i class="fab fa-instagram"></i>
-                                                                    </a>
-                                                                </div>
-                                                                <div class="elementor-grid-item">
-                                                                    <a href="#" class="elementor-icon elementor-social-icon elementor-social-icon-yelp elementor-repeater-item-e0f5af3" target="_blank">
-                                                                        <span class="elementor-screen-only">help</span>
-                                                                        <i class="fab fa-yelp"></i>
-                                                                    </a>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    
                                                     <div
                                                         class="elementor-element elementor-element-9c9f0b7 elementor-widget__width-auto elementor-widget elementor-widget-craftcoffee-search"
                                                         data-id="9c9f0b7"
@@ -295,9 +309,7 @@
                                                         data-widget_type="craftcoffee-search.default"
                                                     >
                                                         <div class="elementor-widget-container">
-                                                            <div class="craftcoffee-search-icon">
-                                                                <a data-open="tg_search_9c9f0b7" href="javascript:;"><i aria-hidden="true" class="fas fa-search"></i></a>
-                                                            </div>
+                                                            
 
                                                             <div id="tg_search_9c9f0b7" class="craftcoffee-search-wrapper">
                                                                 <div class="craftcoffee-search-inner">
@@ -340,7 +352,31 @@
                                                         data-element_type="widget"
                                                         data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
                                                         data-widget_type="button.default"
+                                                    >    <div class="elementor-column-wrap elementor-element-populated">
+                                                <div class="elementor-widget-wrap">
+                                                    <div
+                                                        class="elementor-element elementor-element-d6b5ce3 elementor-widget elementor-widget-craftcoffee-navigation-menu"
+                                                        data-id="d6b5ce3"
+                                                        data-element_type="widget"
+                                                        data-settings='{"craftcoffee_ext_is_scrollme":"false","craftcoffee_ext_is_smoove":"false","craftcoffee_ext_is_parallax_mouse":"false","craftcoffee_ext_is_infinite":"false","craftcoffee_ext_is_fadeout_animation":"false"}'
+                                                        data-widget_type="craftcoffee-navigation-menu.default"
                                                     >
+                                                        <div class="elementor-widget-container">
+                                                            <div class="themegoods-navigation-wrapper menu_style1">
+                                                                <div class="menu-main-menu-container">
+                                                                    <ul id="nav_menu34" class="nav">
+                                                                        <li class="menu-item current-menu-ancestor current-menu-parent menu-item-has-children ">
+                                                                            <a href="../home">Home</a>
+                                                                             
+                                                                        </li>
+                                                                        
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                                         <div class="elementor-widget-container">
                                                             <div class="elementor-button-wrapper">
                                                                 <a href="tel:234.567.3455" class="elementor-button-link elementor-button elementor-size-sm" role="button">
@@ -413,31 +449,7 @@
             <!-- Begin content -->
             
                     <!-- Begin main content -->
- <div id="ab">                   
-<div id="file-upload-container">
-    <input type="file" id="file-upload" accept=".zip" onchange="displayFileName()">
-    <label for="file-upload" id="choose-file-btn">Choose File</label>
-    <div id="file-name"></div>
-    <button id="upload-btn" onclick="uploadFile()">Upload</button>
-  </div>
-</div>
-
-  <script>
-    function displayFileName() {
-      var input = document.getElementById('file-upload');
-      var fileName = input.files[0].name;
-      document.getElementById('file-name').innerText = 'Selected File: ' + fileName;
-      document.getElementById('upload-btn').style.display = 'block';
-    }
-
-    function uploadFile() {
-      // Add your file upload logic here
-      alert('File uploaded!');
-    }
-  </script>
-
-  
-
+ 
 
                                        
 
@@ -447,8 +459,49 @@
 
 
 
+<div id="ab">
+               
+  <div id="container">
+    <div class="section-box" id="first-section">
+      <h2>First Section</h2>
+      <div class="chart-container">
+        <!-- Chart from backend data will be rendered here -->
+        <!-- Add enough content to make the scrollbar appear -->
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer quis neque et dolor vestibulum tincidunt.</p>
+      </div>
+    </div>
 
-                                        
+    <div class="section-box" id="second-section">
+      <h2>Second Section</h2>
+      <div class="chart-container">
+        <!-- Chart from backend data will be rendered here -->
+      </div>
+    </div>
+
+    <div class="section-box" id="third-section">
+      <h2>Theory Section</h2>
+      <p>This is the theoretical content of the third section. You can add your text here.</p>
+    </div>
+  </div>
+
+
+<div>
+
+  <script>
+    // Add your JavaScript code to fetch and render charts from the backend
+    // Example:
+    // fetch('backend_url_for_first_chart_data')
+    //   .then(response => response.json())
+    //   .then(data => renderChart('first-section', data));
+
+    // fetch('backend_url_for_second_chart_data')
+    //   .then(response => response.json())
+    //   .then(data => renderChart('second-section', data));
+
+    // function renderChart(containerId, data) {
+    //   // Use a chart library (e.g., Chart.js) to render the chart in the specified container
+    // }
+  </script>                         
                                        
 
 
