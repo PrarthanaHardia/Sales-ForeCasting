@@ -1,0 +1,5 @@
+        # plt.plot(range(1, 11), wcss, marker='o')
+        # plt.title('Elbow Method')
+        # plt.xlabel('Number of Clusters')
+        # plt.ylabel('WCSS (Within-Cluster Sum of Squares)')
+        # plt.show()
