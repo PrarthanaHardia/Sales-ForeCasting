@@ -532,9 +532,9 @@ class ClusteringResource(Resource):
         # 3. Visualize the Clusters in 2D PCA Space
         plt.figure(figsize=(10, 6))
         sns.scatterplot(x=pca_result[:, 0], y=pca_result[:, 1], hue=data['Cluster'], palette='viridis', legend='full')
-        plt.title('Clusters visualisation')
-        plt.xlabel('PCA 1')
-        plt.ylabel('PCA 2')
+        plt.title(f'Clusters in 2D PCA Space (Number of Clusters: {clusters})')
+        plt.xlabel('Principal Component 1')
+        plt.ylabel('Principal Component 2')
         plt.show()
 
         # Analyze the characteristics of each cluster
