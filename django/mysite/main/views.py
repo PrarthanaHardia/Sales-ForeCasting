@@ -24,3 +24,5 @@ def time(request):
     return render(request,"timeseries2.html")
 def output2(request):
     return render(request,"timeseires.html")
+def l(request):
+    return render(request,"b.html")

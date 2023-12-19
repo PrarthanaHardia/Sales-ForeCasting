@@ -11,5 +11,6 @@ urlpatterns =[
     path("output/",views.saleforecasting,name="saleforecasting"),
     path("output2/",views.output2,name="output2"),
     path("time/",views.time,name="time"),
+    path("l/",views.l,name="l"),
     path('signup/', signup, name='signup'),
 ]

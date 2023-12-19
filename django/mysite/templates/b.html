@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      background-color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #container {
+      width: 80%;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-wrap: wrap; /* Enable wrapping for the sections */
+    }
+
+    .section-box {
+      border-bottom: 1px solid #ccc;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
+      width: 50%; /* Each section takes up half of the container width */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .chart-container {
+      height: 300px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    #first-section {
+      background-color: #f0f0f0; /* Different background color for the first section */
+    }
+
+    #second-section {
+      background-color: #e0e0e0; /* Different background color for the second section */
+    }
+
+    #third-section {
+      width: 100%; /* Takes up the full width of the container */
+      text-align: center;
+    }
+  </style>
+  <title>Web Page with Sections in Boxes</title>
+</head>
+<body>
+  {% extends 'header.html' %}
+  <div id="container">
+    <div class="section-box" id="first-section">
+      <h2>First Section</h2>
+      <div class="chart-container">
+        <!-- Chart from backend data will be rendered here -->
+        <!-- Add enough content to make the scrollbar appear -->
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer quis neque et dolor vestibulum tincidunt.</p>
+      </div>
+    </div>
+
+    <div class="section-box" id="second-section">
+      <h2>Second Section</h2>
+      <div class="chart-container">
+        <!-- Chart from backend data will be rendered here -->
+      </div>
+    </div>
+
+    <div class="section-box" id="third-section">
+      <h2>Theory Section</h2>
+      <p>This is the theoretical content of the third section. You can add your text here.</p>
+    </div>
+  </div>
+
+  <script>
+    // Add your JavaScript code to fetch and render charts from the backend
+    // Example:
+    // fetch('backend_url_for_first_chart_data')
+    //   .then(response => response.json())
+    //   .then(data => renderChart('first-section', data));
+
+    // fetch('backend_url_for_second_chart_data')
+    //   .then(response => response.json())
+    //   .then(data => renderChart('second-section', data));
+
+    // function renderChart(containerId, data) {
+    //   // Use a chart library (e.g., Chart.js) to render the chart in the specified container
+    // }
+  </script>
+
+</body>
+</html>

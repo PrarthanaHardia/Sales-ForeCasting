@@ -27,7 +27,6 @@ from sklearn.decomposition import PCA
 import seaborn as sns
 
 
-
 app = Flask((__name__))
 CORS(app)
 api=Api(app) 
@@ -107,29 +106,58 @@ class file_upload(Resource):
                 "message": str(e)
             })
 
+# class Login(Resource):
+#     def post(self):
+#         user_data = request.get_json()
+#         user_id = user_data.get('email')
+#         password = user_data.get('password')
+
+#         # Check if user_id and password are valid
+#         # Save user data to MongoDB
+#         if validate_credentials(email, password):
+
+#             return {'message': 'Login successful'}, 200
+#         else:
+#             return {'message': 'Invalid credentials'}, 401
+        
+
+
+
+
+
+
 class Login(Resource):
     def post(self):
         user_data = request.get_json()
-        user_id = user_data.get('email')
+        email = user_data.get('email')
         password = user_data.get('password')
 
         # Check if user_id and password are valid
         # Save user data to MongoDB
-        if validate_credentials(email, password):
-
+        if validate_credentials(email, password):  
             return {'message': 'Login successful'}, 200
         else:
             return {'message': 'Invalid credentials'}, 401
 
+
+
+
+
+
 def validate_credentials(email, password):
     # Retrieve the user data from the database based on the user_id
-    user = user_data.find_one({'user_id': email})
+    user = user_data.find_one({'email': email})
 
     # Check if the user exists and the password matches
     if user and user['password'] == password:
         return True
     else:
         return False
+        
+
+    
+
+
 
 class Signup(Resource):
     def post(self):
