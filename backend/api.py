@@ -72,7 +72,7 @@ def check_validity(user_id, dataset_id):
 class file_upload(Resource):
     def post(self):
         try:
-            user_id = request.form['user_id']
+            # user_id = request.form['user_id']
             uploaded_file = request.files['file']
             file_data = uploaded_file.read()
             if uploaded_file and allowed_file(uploaded_file.filename):

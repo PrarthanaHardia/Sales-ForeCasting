@@ -17,9 +17,9 @@ def home(request):
     return render(request,"home.html")
 
 def start(request):
-    return render(request,"start.html")
-def saleforecasting(request):
-    return render(request,"saleforecasting.html")
+    return render(request,"upload.html")
+def header(request):
+    return render(request,"header.html")
 def time(request):
     return render(request,"timeseries2.html")
 def output2(request):
