@@ -25,4 +25,4 @@ def time(request):
 def output2(request):
     return render(request,"timeseires.html")
 def l(request):
-    return render(request,"b.html")
+    return render(request,"outputf.html")
